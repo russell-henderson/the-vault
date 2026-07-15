@@ -1,3 +1,6 @@
+<img width="1875" height="928" alt="image" src="https://github.com/user-attachments/assets/631b3d1e-d069-417d-9cfc-59c121a61f57" />
+
+
 # The Vault Architect
 
 The Vault Architect is an AI-native architecture workflow. It turns structured human intent into a validated, persisted, deterministic Codex-ready prompt, a mock execution result, and a traceable verification record.
