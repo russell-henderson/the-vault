@@ -4,3 +4,31 @@
 
 :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color-scheme: dark; }
 body { margin: 0; min-width: 320px; }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .65; }
+.panel { border: 1px solid rgba(148, 163, 184, .13); border-radius: 1rem; background: rgba(15, 23, 42, .72); box-shadow: 0 20px 50px rgba(0, 0, 0, .12); }
+.card-hover { transition: border-color .2s ease, transform .2s ease, background .2s ease; }
+.card-hover:hover { border-color: rgba(34, 211, 238, .45); background: rgba(15, 30, 50, .86); transform: translateY(-2px); }
+.eyebrow { color: rgb(34 211 238); font-size: .7rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+.page-title { margin-top: .5rem; font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 700; letter-spacing: -.04em; line-height: 1.1; }
+.page-subtitle { margin-top: .8rem; max-width: 46rem; color: rgb(148 163 184); font-size: 1rem; line-height: 1.7; }
+.section-title { margin-top: .35rem; font-size: 1.1rem; font-weight: 650; color: white; }
+.tag { display: inline-flex; border-radius: 999px; background: rgba(34, 211, 238, .1); padding: .3rem .65rem; color: rgb(103 232 249); font-size: .7rem; font-weight: 650; }
+.button-primary, .button-secondary { border-radius: .65rem; padding: .7rem 1rem; font-size: .875rem; font-weight: 650; transition: background .2s ease, border-color .2s ease; }
+.button-primary { background: rgb(34 211 238); color: rgb(8 13 24); }
+.button-primary:hover { background: rgb(103 232 249); }
+.button-secondary { border: 1px solid rgba(148, 163, 184, .2); color: rgb(203 213 225); }
+.button-secondary:hover { background: rgba(148, 163, 184, .1); }
+.back-link { color: rgb(148 163 184); font-size: .875rem; transition: color .2s ease; }
+.back-link:hover { color: white; }
+.field { display: flex; flex-direction: column; gap: .55rem; color: rgb(203 213 225); font-size: .8rem; font-weight: 600; }
+.field small { color: rgb(100 116 139); font-weight: 400; }
+.field input, .field textarea { width: 100%; border: 1px solid rgba(148, 163, 184, .16); border-radius: .65rem; background: rgba(2, 6, 23, .55); padding: .7rem .8rem; color: rgb(226 232 240); font-size: .875rem; font-weight: 400; outline: none; transition: border-color .2s ease, box-shadow .2s ease; }
+.field textarea { resize: vertical; line-height: 1.55; }
+.field input:focus, .field textarea:focus { border-color: rgba(34, 211, 238, .7); box-shadow: 0 0 0 3px rgba(34, 211, 238, .1); }
+.empty-panel { display: flex; align-items: center; gap: 1rem; border: 1px dashed rgba(148, 163, 184, .22); border-radius: 1rem; padding: 2rem; color: rgb(148 163 184); }
+.step-icon { color: rgb(34 211 238); font-family: ui-monospace, monospace; font-size: .8rem; }
+.alert-error { border: 1px solid rgba(251, 113, 133, .3); border-radius: .75rem; background: rgba(251, 113, 133, .1); padding: .85rem 1rem; color: rgb(254 205 211); font-size: .875rem; }
+.spinner { height: 1rem; width: 1rem; animation: spin 1s linear infinite; border: 2px solid rgba(148, 163, 184, .3); border-top-color: rgb(34 211 238); border-radius: 999px; }
+@keyframes spin { to { transform: rotate(360deg); } }

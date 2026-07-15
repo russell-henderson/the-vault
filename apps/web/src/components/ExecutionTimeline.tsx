@@ -1,0 +1,7 @@
+import type { ExecutionRecord } from "@the-vault/shared";
+
+const labels: Record<ExecutionRecord["status"], string> = { pending: "Awaiting implementation", running: "In progress", completed: "Completed", failed: "Failed", "needs-review": "Needs review" };
+
+export function ExecutionTimeline({ executions }: { executions: ExecutionRecord[] }) {
+  return <section className="panel"><div className="border-b border-white/10 px-5 py-4"><p className="eyebrow">Execution history</p><h2 className="section-title">Handoffs and verification</h2></div>{executions.length === 0 ? <p className="p-5 text-sm text-slate-400">No execution records yet. Generate a prompt to create the first handoff.</p> : <div className="divide-y divide-white/10">{executions.map((execution) => <div className="flex gap-4 p-5" key={execution.id}><div className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${execution.status === "failed" ? "bg-rose-400" : execution.status === "completed" ? "bg-emerald-400" : "bg-cyan-400"}`} /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium text-white">{labels[execution.status]}</p><time className="text-xs text-slate-500">{new Date(execution.createdAt).toLocaleString()}</time></div><p className="mt-1 text-xs text-slate-500">Execution {execution.id.slice(0, 8)} · {execution.verificationNotes || "Verification pending"}</p></div></div>)}</div>}</section>;
+}

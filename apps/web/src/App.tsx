@@ -1,10 +1,20 @@
+import { useEffect, useState } from "react";
+import type { BlueprintInput } from "@the-vault/shared";
+import { Layout } from "./components/Layout";
+import { api } from "./lib/api";
+import { Dashboard } from "./pages/Dashboard";
+import { BlueprintCreate } from "./pages/BlueprintCreate";
+import { BlueprintDetail } from "./pages/BlueprintDetail";
+
+function currentPath() { return window.location.hash.replace(/^#/, "") || "/dashboard"; }
+
 export function App() {
-  return <main className="min-h-screen bg-slate-950 px-8 py-16 text-slate-100">
-    <div className="mx-auto max-w-4xl">
-      <p className="mb-4 text-sm font-semibold uppercase tracking-[0.25em] text-cyan-400">The Vault Architect</p>
-      <h1 className="text-5xl font-bold tracking-tight">Architecture intent, preserved for implementation.</h1>
-      <p className="mt-6 max-w-2xl text-lg text-slate-300">The web workspace is scaffolded for the blueprint, prompt, and review flow. Milestone 1 provides the API vertical slice behind this experience.</p>
-      <div className="mt-10 grid gap-4 sm:grid-cols-3">{["Blueprint", "Prompt", "Execution record"].map((label, index) => <div className="rounded-xl border border-slate-800 bg-slate-900 p-5" key={label}><span className="text-sm text-cyan-400">0{index + 1}</span><h2 className="mt-8 font-semibold">{label}</h2><p className="mt-2 text-sm text-slate-400">Coming in the next UI milestone.</p></div>)}</div>
-    </div>
-  </main>;
+  const [path, setPath] = useState(currentPath); const [blueprints, setBlueprints] = useState<Awaited<ReturnType<typeof api.listBlueprints>>>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  useEffect(() => { const onHashChange = () => setPath(currentPath()); window.addEventListener("hashchange", onHashChange); void api.listBlueprints().then(setBlueprints).catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Unable to reach API")).finally(() => setLoading(false)); return () => window.removeEventListener("hashchange", onHashChange); }, []);
+  const navigate = (nextPath: string) => { window.location.hash = nextPath; setPath(nextPath); };
+  async function createBlueprint(input: BlueprintInput) { const blueprint = await api.createBlueprint(input); setBlueprints((current) => [blueprint, ...current]); navigate(`/blueprints/${blueprint.id}`); }
+  let content = <Dashboard blueprints={blueprints} loading={loading} error={error} onNavigate={navigate} />;
+  if (path === "/blueprints/new") content = <BlueprintCreate onSubmit={createBlueprint} onCancel={() => navigate("/dashboard")} />;
+  else if (path.startsWith("/blueprints/")) content = <BlueprintDetail id={path.split("/")[2]} onNavigate={navigate} />;
+  return <Layout onNavigate={navigate}>{content}</Layout>;
 }

@@ -28,6 +28,15 @@
 - **AI contributions:** Implemented the approved vertical slice and corrected the root build script to compile workspace dependencies in order.
 - **Verification results:** `npm test` passed: 3 test files and 4 tests. `npm run typecheck` passed. `npm run build` passed for shared, prompts, API, and web packages. `npm install` reported 5 audit vulnerabilities and pending native build scripts; these are follow-up dependency hygiene items, not runtime test failures.
 
+## 2026-07-15 — Implementation milestone 2
+
+- **Codex model used:** Codex runtime; exact model identifier is not exposed in this workspace.
+- **Major decisions:** Preserved the modular monolith and added a hash-based React workflow instead of introducing a routing dependency. Added prompt lookup, execution lookup, and blueprint execution history endpoints. Kept prompt generation deterministic and external AI integration deferred.
+- **Features implemented:** Dashboard with empty/list states, structured blueprint creation form with shared Zod validation, blueprint detail view, prompt generation action, prompt preview, execution timeline, API error normalization, and frontend/API workflow tests.
+- **Human decisions:** Approved the Vault Interface + Blueprint Workflow milestone and continued to defer authentication, deployment, and external AI APIs.
+- **AI contributions:** Implemented the approved user journey and updated the demo narrative with capture points and judging walkthrough.
+- **Verification results:** `npm test` passed: 5 test files and 8 tests. `npm run typecheck` passed. `npm run build` passed for shared, prompts, API, and web packages. The workspace still has no visible Git metadata, so branch/tag state was not independently verifiable.
+
 ## Log format for future entries
 
 For each meaningful milestone, record the date, model used, repository state, major decisions, implemented features, human decisions, AI contributions, verification results, and any follow-up risks or approvals required.

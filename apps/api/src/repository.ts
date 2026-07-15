@@ -64,10 +64,29 @@ export class VaultRepository {
     return artifact;
   }
 
+  getLatestPromptArtifact(blueprintId: string): PromptArtifact | undefined {
+    const row = this.db.prepare("SELECT * FROM prompt_artifacts WHERE blueprint_id = ? ORDER BY version DESC LIMIT 1").get(blueprintId) as Record<string, unknown> | undefined;
+    return row ? this.mapPrompt(row) : undefined;
+  }
+
+  getPromptArtifact(id: string): PromptArtifact | undefined {
+    const row = this.db.prepare("SELECT * FROM prompt_artifacts WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+    return row ? this.mapPrompt(row) : undefined;
+  }
+
   createExecutionRecord(blueprintId: string, promptArtifactId: string): ExecutionRecord {
     const record: ExecutionRecord = { id: randomUUID(), blueprintId, promptArtifactId, status: "pending", outputLocation: "", verificationNotes: "", createdAt: new Date().toISOString() };
     this.db.prepare(`INSERT INTO execution_records (id,blueprint_id,prompt_artifact_id,status,output_location,verification_notes,created_at) VALUES (?,?,?,?,?,?,?)`).run(record.id, record.blueprintId, record.promptArtifactId, record.status, record.outputLocation, record.verificationNotes, record.createdAt);
     return record;
+  }
+
+  getExecutionRecord(id: string): ExecutionRecord | undefined {
+    const row = this.db.prepare("SELECT * FROM execution_records WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+    return row ? this.mapExecution(row) : undefined;
+  }
+
+  listExecutionRecords(blueprintId: string): ExecutionRecord[] {
+    return (this.db.prepare("SELECT * FROM execution_records WHERE blueprint_id = ? ORDER BY created_at DESC").all(blueprintId) as Record<string, unknown>[]).map((row) => this.mapExecution(row));
   }
 
   close(): void { this.db.close(); }
@@ -79,5 +98,13 @@ export class VaultRepository {
       architectureOverview: String(row.architecture_overview), coreLogic: String(row.core_logic), layoutDesign: String(row.layout_design),
       constraints: JSON.parse(String(row.constraints_json)) as string[], createdAt: String(row.created_at), updatedAt: String(row.updated_at)
     };
+  }
+
+  private mapPrompt(row: Record<string, unknown>): PromptRow {
+    return { id: String(row.id), blueprintId: String(row.blueprint_id), generatedPrompt: String(row.generated_prompt), version: Number(row.version), createdAt: String(row.created_at) };
+  }
+
+  private mapExecution(row: Record<string, unknown>): ExecutionRow {
+    return { id: String(row.id), blueprintId: String(row.blueprint_id), promptArtifactId: String(row.prompt_artifact_id), status: row.status as ExecutionRecord["status"], outputLocation: String(row.output_location), verificationNotes: String(row.verification_notes), createdAt: String(row.created_at) };
   }
 }

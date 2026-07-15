@@ -29,3 +29,25 @@ Show the status changing from generated to reviewed. The audience can see what t
 ## 2:40–3:00 — Why this matters
 
 “The Vault Architect does not replace architectural judgment. It preserves that judgment while making it useful to Codex. The result is faster implementation with a visible chain of intent, constraints, AI contribution, and verification. This small workflow can later connect to repositories, pull requests, and architecture drift checks—but the core value is already demonstrated today.”
+
+## Milestone 2 demo sequence
+
+1. Open the dark Vault Architect dashboard and show the blueprint library or the empty state.
+2. Select **Create blueprint** and enter the `FeatureFlagPanel` specification.
+3. Submit the form and show that the validated blueprint is persisted and immediately opened in detail view.
+4. Walk through the stored architecture context, dependencies, and constraints.
+5. Select **Generate Codex prompt** and show the deterministic prompt artifact plus the pending execution record.
+6. Refresh or revisit the detail view to demonstrate that the prompt and execution history are retrieved from the API rather than held only in browser state.
+7. Close on the trace from human specification to Codex-ready handoff.
+
+## User workflow screenshots to capture later
+
+- Dashboard empty state with the primary create action.
+- Completed blueprint form showing the structured architecture fields.
+- Blueprint detail view with the specification and generated prompt side by side.
+- Execution history panel showing the pending handoff status.
+- Optional final review state after AI integration is added.
+
+## Expected judging walkthrough
+
+Judges should see three things clearly: the user is defining architecture in a structured way, the generated prompt preserves that context and constraints, and the resulting execution record makes the handoff auditable. Emphasize that Milestone 2 intentionally uses deterministic prompt generation; the AI provider is a later replaceable boundary, not a hidden dependency in the workflow.

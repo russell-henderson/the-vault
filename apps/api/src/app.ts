@@ -8,6 +8,13 @@ export function buildApp(repository = new VaultRepository()): FastifyInstance {
   const app = Fastify({ logger: true });
   void app.register(cors, { origin: true });
 
+  app.setErrorHandler((error, _request, reply) => {
+    app.log.error(error);
+    const statusCode = typeof error === "object" && error !== null && "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : 500;
+    const message = typeof error === "object" && error !== null && "message" in error && typeof error.message === "string" ? error.message : "Unexpected server error";
+    return reply.code(statusCode < 500 ? statusCode : 500).send({ error: "Request failed", message: statusCode < 500 ? message : "Unexpected server error" });
+  });
+
   app.post("/api/blueprints", async (request, reply) => {
     const parsed = blueprintInputSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid blueprint", issues: parsed.error.flatten() });
@@ -20,6 +27,24 @@ export function buildApp(repository = new VaultRepository()): FastifyInstance {
     const blueprint = repository.getBlueprint(request.params.id);
     if (!blueprint) return reply.code(404).send({ error: "Blueprint not found" });
     return blueprint;
+  });
+
+  app.get<{ Params: { id: string } }>("/api/blueprints/:id/prompt", async (request, reply) => {
+    if (!repository.getBlueprint(request.params.id)) return reply.code(404).send({ error: "Blueprint not found" });
+    const promptArtifact = repository.getLatestPromptArtifact(request.params.id);
+    if (!promptArtifact) return reply.code(404).send({ error: "Prompt artifact not found" });
+    return promptArtifact;
+  });
+
+  app.get<{ Params: { id: string } }>("/api/blueprints/:id/executions", async (request, reply) => {
+    if (!repository.getBlueprint(request.params.id)) return reply.code(404).send({ error: "Blueprint not found" });
+    return repository.listExecutionRecords(request.params.id);
+  });
+
+  app.get<{ Params: { id: string } }>("/api/executions/:id", async (request, reply) => {
+    const execution = repository.getExecutionRecord(request.params.id);
+    if (!execution) return reply.code(404).send({ error: "Execution record not found" });
+    return execution;
   });
 
   app.post<{ Params: { id: string } }>("/api/blueprints/:id/generate-prompt", async (request, reply) => {
