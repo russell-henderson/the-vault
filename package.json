@@ -3,7 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "description": "AI-native architecture workflow foundation",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run build --workspace @the-vault/shared && npm run build --workspace @the-vault/prompts && npm run build --workspace @the-vault/api && npm run build --workspace @the-vault/web",
     "dev:api": "npm run dev --workspace @the-vault/api",
@@ -23,6 +26,11 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.10"
+  },
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true
   }
 }
