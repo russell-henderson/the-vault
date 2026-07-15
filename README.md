@@ -1,6 +1,24 @@
 # The Vault Architect
 
-The Vault Architect is an AI-native architecture workflow. It turns a structured component blueprint into a validated, persisted, deterministic Codex-ready prompt and a traceable execution record.
+The Vault Architect is an AI-native architecture workflow. It turns structured human intent into a validated, persisted, deterministic Codex-ready prompt, a mock execution result, and a traceable verification record.
+
+## What the product does
+
+Vault Architect gives an engineer a visible handoff between architecture and AI-assisted implementation:
+
+```text
+Blueprint → Validate → Compile prompt → Launch mock execution → Review evidence
+```
+
+The human remains responsible for the specification and verification. The current demo uses a local mock provider; no external AI key or network request is required.
+
+## Technology stack
+
+- React, TypeScript, Vite, and Tailwind CSS
+- Node.js, TypeScript, and Fastify
+- SQLite with a typed repository abstraction
+- Zod for shared validation
+- Provider-neutral AI adapter with a deterministic mock provider
 
 ## Milestone 1
 
@@ -10,7 +28,7 @@ This milestone implements:
 Blueprint → Zod validation → SQLite persistence → deterministic prompt → execution record
 ```
 
-External AI APIs are intentionally not connected yet. The API creates a prompt artifact and a pending execution record so the future Codex adapter has a stable boundary.
+External AI APIs are intentionally not connected. The API creates a prompt artifact and execution evidence through the mock provider.
 
 ## Requirements
 
@@ -24,6 +42,7 @@ npm install
 npm test
 npm run typecheck
 npm run build
+npm run seed:demo
 ```
 
 Start the API and web app in separate terminals:
@@ -34,6 +53,17 @@ npm run dev:web
 ```
 
 The API listens on `http://localhost:3001` and stores SQLite data at `apps/api/data/vault.db`. Set `VAULT_DATABASE_PATH` to override the database path.
+
+For a presentation-ready local demo, run `npm run seed:demo` once after installation. It creates the realistic **AI Dashboard Analytics Panel** blueprint if it does not already exist.
+
+## Three-minute demo workflow
+
+1. Open the dashboard and select **AI Dashboard Analytics Panel**, or create a new blueprint.
+2. Review the structured architecture, technology, dependencies, UI, and constraints.
+3. Select **Generate Codex prompt** and inspect the deterministic prompt artifact.
+4. Select **Launch execution** to run the local mock provider.
+5. Review the generated implementation result and execution status.
+6. Add a verification note documenting what was checked.
 
 ## API examples
 

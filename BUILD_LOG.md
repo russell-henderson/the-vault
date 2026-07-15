@@ -45,6 +45,13 @@
 - **Features implemented:** `POST /api/executions`, enriched `GET /api/executions/:id`, `POST /api/executions/:id/verify`, completed/failed mock execution handling, schema migration for existing SQLite records, and BlueprintDetail workflow from prompt generation to verification.
 - **Verification results:** `npm test` passed: 7 test files and 12 tests. `npm run typecheck` passed. `npm run build` passed for shared, prompts, API, and web packages. No external AI requests were made.
 
+## 2026-07-15 — Final demo readiness pass
+
+- **Major decisions:** Kept the architecture and dependency set unchanged. Added only a repeatable local demo seed, presentation-focused copy/spacing/status polish, and documentation alignment.
+- **Demo data:** Added the `AI Dashboard Analytics Panel` seed with React + TypeScript + Tailwind, API integration, responsive layout, loading/error states, and accessibility requirements.
+- **Documentation:** Updated README, demo story, demo script, and implemented architecture diagram to describe the current mock-provider workflow accurately.
+- **Verification results:** `npm run seed:demo` succeeded. `npm test` passed: 7 test files and 12 tests. `npm run typecheck` passed. `npm run build` passed for shared, prompts, API, and web packages.
+
 ## Log format for future entries
 
 For each meaningful milestone, record the date, model used, repository state, major decisions, implemented features, human decisions, AI contributions, verification results, and any follow-up risks or approvals required.

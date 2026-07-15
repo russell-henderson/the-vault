@@ -8,6 +8,7 @@
     "build": "npm run build --workspace @the-vault/shared && npm run build --workspace @the-vault/prompts && npm run build --workspace @the-vault/api && npm run build --workspace @the-vault/web",
     "dev:api": "npm run dev --workspace @the-vault/api",
     "dev:web": "npm run dev --workspace @the-vault/web",
+    "seed:demo": "tsx apps/api/src/seed-demo.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

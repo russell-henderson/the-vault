@@ -1,136 +1,70 @@
-# Vault Architect Demo Script
+# Vault Architect — 3-Minute Demo Script
 
-Target Length:
-Approximately 3 minutes
+## Before the demo
 
----
+Run once:
 
-# Opening
+```bash
+npm install
+npm run seed:demo
+```
 
-## Problem
+Then start the API and web app in separate terminals:
 
-Software development with AI assistants is powerful, but AI often lacks long-term architectural context.
+```bash
+npm run dev:api
+npm run dev:web
+```
 
-Developers need a way to preserve intent, structure requirements, and verify AI-generated results.
+Open the Vite URL, usually `http://localhost:5173`.
 
-This is the problem Vault Architect solves.
+## 0:00–0:25 — The problem
 
----
+Say:
 
-# Scene 1: Dashboard
+> AI coding tools are fast, but architectural intent is easy to lose between a design decision and an implementation request. Vault Architect preserves that intent as a reviewable handoff.
 
-Show:
+Show the dashboard headline: **Turn intent into implementation.**
 
-Vault Architect dashboard.
+## 0:25–0:55 — The blueprint
 
-Narration:
+Select **AI Dashboard Analytics Panel** from the seeded dashboard card. Explain that the blueprint captures React + TypeScript + Tailwind, API dependencies, responsive layout, loading/error states, and accessibility constraints.
 
-"Vault Architect is an AI-native development orchestration system. It creates a structured workflow between human architecture decisions and AI-assisted implementation."
+If demonstrating creation instead of the seed, select **Create blueprint**, enter the same fields, and click **Validate & save blueprint**.
 
----
+## 0:55–1:30 — The compiled prompt
 
-# Scene 2: Create Blueprint
+Select **Generate Codex prompt**. Show the generated prompt artifact and point out that it carries the component path, architecture overview, dependencies, and constraints into a deterministic Codex-ready brief.
 
-Open:
+Say:
 
-Blueprint creation workflow.
+> The system makes the context explicit before any AI execution is allowed. The prompt is an inspectable artifact, not hidden conversation state.
 
-Create:
+## 1:30–2:15 — The execution boundary
 
-Example Component:
+Select **Launch execution**. The current demo uses the local mock provider, so it is reliable and requires no external key. Show the completed provider result, artifact type, artifact location, and execution history.
 
-User Dashboard Component
+Say:
 
-Technology:
+> The provider is replaceable. Today this is a deterministic mock; the same execution service can later connect to Codex without changing the blueprint or evidence model.
 
-React + TypeScript + Tailwind CSS
+## 2:15–2:45 — Human verification
 
-Requirements:
+In **Verification notes**, enter:
 
-- Responsive design
-- Loading states
-- Error handling
-- API integration
+> Reviewed the responsive states, API boundary, loading/error behavior, and accessibility constraints against the blueprint.
 
-Narration:
+Select **Add verification note**. Show the note attached to the execution result.
 
-"Instead of giving AI an unstructured request, developers create a complete architectural blueprint containing the intent, constraints, dependencies, and implementation requirements."
+## 2:45–3:00 — Why it matters
 
----
+Say:
 
-# Scene 3: Generate Prompt
+> Vault Architect does not replace architectural judgment. It preserves that judgment while making it useful to AI implementation: specification, prompt, output, and verification stay connected.
 
-Click:
+## Demo recovery
 
-Generate Codex Prompt
-
-Show:
-
-Generated prompt artifact.
-
-Narration:
-
-"Vault Architect converts the structured blueprint into a deterministic implementation prompt designed for AI coding systems."
-
----
-
-# Scene 4: Execute Workflow
-
-Launch execution.
-
-Show:
-
-Execution lifecycle:
-
-Pending
-
-↓
-
-Running
-
-↓
-
-Completed
-
-Narration:
-
-"The execution layer tracks the AI workflow and preserves evidence of what was requested, generated, and verified."
-
----
-
-# Scene 5: Verification
-
-Show:
-
-Verification panel.
-
-Add notes:
-
-"Implementation reviewed successfully."
-
-Narration:
-
-"Human verification remains part of the process. AI assists implementation, but engineering judgment validates the outcome."
-
----
-
-# Closing
-
-Narration:
-
-"Vault Architect moves AI-assisted development from simple code generation toward structured engineering collaboration."
-
-"The future of software development requires both human architectural thinking and AI implementation capability."
-
----
-
-# Final Demo Checklist
-
-Before recording:
-
-- Confirm clean database state
-- Confirm demo blueprint exists
-- Confirm API is running
-- Confirm frontend is running
-- Confirm execution workflow works
-- Confirm screenshots captured
+- If the seeded card is missing, run `npm run seed:demo` and refresh the dashboard.
+- If the API is unavailable, start `npm run dev:api` on port 3001.
+- If an execution was already launched, launch again to create a fresh evidence record.
+- Do not describe the mock result as a live OpenAI response; external AI integration is intentionally deferred.

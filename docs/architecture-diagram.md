@@ -1,217 +1,65 @@
-# Vault Architect System Architecture
+# Vault Architect — Implemented Demo Architecture
 
-## High-Level Architecture
+## End-to-end flow
 
-```
-+-----------------------------+
-| Developer |
-| |
-| Defines architecture intent |
-+-------------+---------------+
-|
-v
-+-----------------------------+
-| Blueprint Layer |
-| |
-| Structured specifications |
-| Requirements |
-| Dependencies |
-| Constraints |
-+-------------+---------------+
-|
-v
-+-----------------------------+
-| Prompt Compiler |
-| |
-| Blueprint -> AI instruction |
-| Deterministic generation |
-+-------------+---------------+
-|
-v
-+-----------------------------+
-| AI Provider Adapter |
-| |
-| Provider abstraction |
-| OpenAI/Codex ready |
-| Local model compatible |
-+-------------+---------------+
-|
-v
-+-----------------------------+
-| Execution Service |
-| |
-| Lifecycle tracking |
-| Pending |
-| Running |
-| Completed |
-| Failed |
-+-------------+---------------+
-|
-v
-+-----------------------------+
-| Evidence Layer |
-| |
-| Artifacts |
-| Outputs |
-| Verification notes |
-| Execution history |
-+-----------------------------+
+```text
+Human
+  │ creates structured component blueprint
+  ▼
+React web workspace
+  │ POST /api/blueprints
+  ▼
+Fastify API + shared Zod schemas
+  │ validate and persist
+  ▼
+SQLite typed repository
+  │ blueprint → deterministic prompt artifact
+  ▼
+Prompt compiler
+  │ POST /api/executions
+  ▼
+Execution service
+  │ provider-neutral boundary
+  ▼
+Mock AI provider
+  │ normalized output
+  ▼
+Execution evidence
+  │ status, prompt, output, artifact metadata, timestamps
+  ▼
+Human verification
+  │ POST /api/executions/:id/verify
+  ▼
+Reviewable execution history
 ```
 
+## Implemented components
 
----
+### Frontend
 
+- `Dashboard` — blueprint library and empty state.
+- `BlueprintCreate` and `BlueprintForm` — structured, client-validated authoring.
+- `BlueprintDetail` — specification, prompt, execution, result, and verification workflow.
+- `PromptPreview`, `ExecutionLauncher`, `ExecutionResult`, and `VerificationPanel` — visible evidence layers.
 
-# Application Architecture
+### Backend
 
-## Frontend
+- Fastify routes for blueprints, prompts, executions, and verification notes.
+- `VaultRepository` for SQLite persistence and additive execution-record migration.
+- `ExecutionService` for provider validation and pending/running/completed/failed transitions.
+- `AiProvider` interface with `MockAiProvider` as the current no-network implementation.
 
-React Application
+### Data ownership
 
-```
-Dashboard
-|
-+-- Blueprint Creation
-|
-+-- Blueprint Detail
-|
-+-- Prompt Preview
-|
-+-- Execution Result
-|
-+-- Verification Panel
-```
-
-
----
-
-## Backend
-
-### Fastify API
-
-```
-Routes
-|
-+-- Blueprint Routes
-|
-+-- Prompt Routes
-|
-+-- Execution Routes
-|
-+-- Verification Routes
-```
-
-### Services
-
-```
-+-- Repository Layer
-|
-+-- Prompt Compiler
-|
-+-- Execution Service
-|
-+-- AI Provider Adapter
-```
-
-
----
-
-# Data Flow
-
-## Blueprint Creation
-
-User Input
-
-|
-
-Zod Validation
-
-|
-
-SQLite Persistence
-
-|
-
-Blueprint Record
-
-
----
-
-## Prompt Generation
-
-```
+```text
 Blueprint
-
-|
-
-Prompt Compiler
-
-|
-
-Prompt Artifact
-
-|
-
-Execution Ready
+  └── PromptArtifact
+        └── ExecutionRecord
+              ├── inputPrompt
+              ├── generatedOutput
+              ├── artifactType / artifactLocation
+              ├── lifecycle timestamps
+              └── verificationNotes
 ```
 
-
----
-
-## AI Execution
-
-```
-Prompt Artifact
-
-|
-
-AI Provider
-
-|
-
-Execution Record
-
-|
-
-Artifact Evidence
-
-|
-
-Verification
-```
-
-
----
-
-# Design Principles
-
-## Human Intent First
-
-Architecture decisions originate from human-defined requirements.
-
----
-
-## AI as an Engineering Partner
-
-AI assists implementation but does not replace architectural judgment.
-
----
-
-## Traceability
-
-Every AI-assisted action should have:
-
-- Input
-- Process
-- Output
-- Verification
-
----
-
-## Extensibility
-
-The provider abstraction allows future support for:
-
-- OpenAI models
-- Local LLMs
-- Additional AI systems
+The provider is not allowed to redefine the blueprint or silently expand scope. The application owns intent, persistence, lifecycle, and verification; a future provider will own only normalized AI execution.
