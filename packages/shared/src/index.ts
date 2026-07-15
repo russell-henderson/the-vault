@@ -35,13 +35,24 @@ export const executionRecordSchema = z.object({
   blueprintId: nonEmpty,
   promptArtifactId: nonEmpty,
   status: executionStatusSchema,
+  inputPrompt: z.string(),
+  generatedOutput: z.string(),
+  artifactType: z.string(),
+  artifactLocation: z.string(),
   outputLocation: z.string(),
   verificationNotes: z.string(),
-  createdAt: z.string().datetime()
+  createdAt: z.string().datetime(),
+  startedAt: z.string().datetime().nullable(),
+  completedAt: z.string().datetime().nullable()
 });
+
+export const verificationInputSchema = z.object({ verificationNotes: nonEmpty.max(4000) });
+export const executionCreateSchema = z.object({ promptArtifactId: nonEmpty });
 
 export type BlueprintInput = z.infer<typeof blueprintInputSchema>;
 export type Blueprint = z.infer<typeof blueprintSchema>;
 export type PromptArtifact = z.infer<typeof promptArtifactSchema>;
 export type ExecutionRecord = z.infer<typeof executionRecordSchema>;
 export type ExecutionStatus = z.infer<typeof executionStatusSchema>;
+export type VerificationInput = z.infer<typeof verificationInputSchema>;
+export type ExecutionCreateInput = z.infer<typeof executionCreateSchema>;

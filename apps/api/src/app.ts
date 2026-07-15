@@ -1,12 +1,16 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { generateCodexPrompt } from "@the-vault/prompts";
-import { blueprintInputSchema } from "@the-vault/shared";
+import { blueprintInputSchema, executionCreateSchema, verificationInputSchema } from "@the-vault/shared";
 import { VaultRepository } from "./repository.js";
+import { MockAiProvider } from "./providers/mock-provider.js";
+import type { AiProvider } from "./providers/types.js";
+import { ExecutionService } from "./services/execution-service.js";
 
-export function buildApp(repository = new VaultRepository()): FastifyInstance {
+export function buildApp(repository = new VaultRepository(), provider: AiProvider = new MockAiProvider()): FastifyInstance {
   const app = Fastify({ logger: true });
   void app.register(cors, { origin: true });
+  const executionService = new ExecutionService(repository, provider);
 
   app.setErrorHandler((error, _request, reply) => {
     app.log.error(error);
@@ -44,14 +48,32 @@ export function buildApp(repository = new VaultRepository()): FastifyInstance {
   app.get<{ Params: { id: string } }>("/api/executions/:id", async (request, reply) => {
     const execution = repository.getExecutionRecord(request.params.id);
     if (!execution) return reply.code(404).send({ error: "Execution record not found" });
-    return execution;
+    const prompt = repository.getPromptArtifact(execution.promptArtifactId);
+    return { ...execution, prompt: prompt?.generatedPrompt ?? execution.inputPrompt, evidence: { verificationNotes: execution.verificationNotes } };
+  });
+
+  app.post("/api/executions", async (request, reply) => {
+    const parsed = executionCreateSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid execution request", issues: parsed.error.flatten() });
+    const promptArtifact = repository.getPromptArtifact(parsed.data.promptArtifactId);
+    if (!promptArtifact) return reply.code(404).send({ error: "Prompt artifact not found" });
+    const execution = await executionService.execute(promptArtifact);
+    return reply.code(201).send({ ...execution, prompt: promptArtifact.generatedPrompt, evidence: { verificationNotes: execution.verificationNotes } });
+  });
+
+  app.post<{ Params: { id: string } }>("/api/executions/:id/verify", async (request, reply) => {
+    const parsed = verificationInputSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid verification note", issues: parsed.error.flatten() });
+    const execution = repository.addVerificationNotes(request.params.id, parsed.data.verificationNotes);
+    if (!execution) return reply.code(404).send({ error: "Execution record not found" });
+    return { ...execution, prompt: repository.getPromptArtifact(execution.promptArtifactId)?.generatedPrompt ?? execution.inputPrompt, evidence: { verificationNotes: execution.verificationNotes } };
   });
 
   app.post<{ Params: { id: string } }>("/api/blueprints/:id/generate-prompt", async (request, reply) => {
     const blueprint = repository.getBlueprint(request.params.id);
     if (!blueprint) return reply.code(404).send({ error: "Blueprint not found" });
     const artifact = repository.createPromptArtifact(blueprint.id, generateCodexPrompt(blueprint));
-    const execution = repository.createExecutionRecord(blueprint.id, artifact.id);
+    const execution = repository.createExecutionRecord(blueprint.id, artifact.id, artifact.generatedPrompt);
     return reply.code(201).send({ blueprint, promptArtifact: artifact, executionRecord: execution });
   });
 

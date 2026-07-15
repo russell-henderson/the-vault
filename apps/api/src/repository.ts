@@ -30,12 +30,19 @@ export class VaultRepository {
       );
       CREATE TABLE IF NOT EXISTS execution_records (
         id TEXT PRIMARY KEY, blueprint_id TEXT NOT NULL, prompt_artifact_id TEXT NOT NULL,
-        status TEXT NOT NULL, output_location TEXT NOT NULL, verification_notes TEXT NOT NULL,
-        created_at TEXT NOT NULL,
+        status TEXT NOT NULL, input_prompt TEXT NOT NULL DEFAULT '', generated_output TEXT NOT NULL DEFAULT '',
+        artifact_type TEXT NOT NULL DEFAULT '', artifact_location TEXT NOT NULL DEFAULT '', output_location TEXT NOT NULL DEFAULT '',
+        verification_notes TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, started_at TEXT, completed_at TEXT,
         FOREIGN KEY (blueprint_id) REFERENCES blueprints(id) ON DELETE CASCADE,
         FOREIGN KEY (prompt_artifact_id) REFERENCES prompt_artifacts(id) ON DELETE CASCADE
       );
     `);
+    this.ensureColumn("execution_records", "input_prompt", "TEXT NOT NULL DEFAULT ''");
+    this.ensureColumn("execution_records", "generated_output", "TEXT NOT NULL DEFAULT ''");
+    this.ensureColumn("execution_records", "artifact_type", "TEXT NOT NULL DEFAULT ''");
+    this.ensureColumn("execution_records", "artifact_location", "TEXT NOT NULL DEFAULT ''");
+    this.ensureColumn("execution_records", "started_at", "TEXT");
+    this.ensureColumn("execution_records", "completed_at", "TEXT");
   }
 
   createBlueprint(input: BlueprintInput): Blueprint {
@@ -74,10 +81,30 @@ export class VaultRepository {
     return row ? this.mapPrompt(row) : undefined;
   }
 
-  createExecutionRecord(blueprintId: string, promptArtifactId: string): ExecutionRecord {
-    const record: ExecutionRecord = { id: randomUUID(), blueprintId, promptArtifactId, status: "pending", outputLocation: "", verificationNotes: "", createdAt: new Date().toISOString() };
-    this.db.prepare(`INSERT INTO execution_records (id,blueprint_id,prompt_artifact_id,status,output_location,verification_notes,created_at) VALUES (?,?,?,?,?,?,?)`).run(record.id, record.blueprintId, record.promptArtifactId, record.status, record.outputLocation, record.verificationNotes, record.createdAt);
+  createExecutionRecord(blueprintId: string, promptArtifactId: string, inputPrompt = ""): ExecutionRecord {
+    const record: ExecutionRecord = { id: randomUUID(), blueprintId, promptArtifactId, status: "pending", inputPrompt, generatedOutput: "", artifactType: "", artifactLocation: "", outputLocation: "", verificationNotes: "", createdAt: new Date().toISOString(), startedAt: null, completedAt: null };
+    this.db.prepare(`INSERT INTO execution_records (id,blueprint_id,prompt_artifact_id,status,input_prompt,generated_output,artifact_type,artifact_location,output_location,verification_notes,created_at,started_at,completed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(record.id, record.blueprintId, record.promptArtifactId, record.status, record.inputPrompt, record.generatedOutput, record.artifactType, record.artifactLocation, record.outputLocation, record.verificationNotes, record.createdAt, record.startedAt, record.completedAt);
     return record;
+  }
+
+  markExecutionRunning(id: string, startedAt = new Date().toISOString()): ExecutionRecord | undefined {
+    this.db.prepare("UPDATE execution_records SET status = 'running', started_at = ? WHERE id = ?").run(startedAt, id);
+    return this.getExecutionRecord(id);
+  }
+
+  completeExecution(id: string, generatedOutput: string, artifactType: string, artifactLocation = "", completedAt = new Date().toISOString()): ExecutionRecord | undefined {
+    this.db.prepare("UPDATE execution_records SET status = 'completed', generated_output = ?, artifact_type = ?, artifact_location = ?, output_location = ?, completed_at = ? WHERE id = ?").run(generatedOutput, artifactType, artifactLocation, artifactLocation, completedAt, id);
+    return this.getExecutionRecord(id);
+  }
+
+  failExecution(id: string, verificationNotes: string, completedAt = new Date().toISOString()): ExecutionRecord | undefined {
+    this.db.prepare("UPDATE execution_records SET status = 'failed', verification_notes = ?, completed_at = ? WHERE id = ?").run(verificationNotes, completedAt, id);
+    return this.getExecutionRecord(id);
+  }
+
+  addVerificationNotes(id: string, verificationNotes: string): ExecutionRecord | undefined {
+    this.db.prepare("UPDATE execution_records SET verification_notes = ? WHERE id = ?").run(verificationNotes, id);
+    return this.getExecutionRecord(id);
   }
 
   getExecutionRecord(id: string): ExecutionRecord | undefined {
@@ -105,6 +132,11 @@ export class VaultRepository {
   }
 
   private mapExecution(row: Record<string, unknown>): ExecutionRow {
-    return { id: String(row.id), blueprintId: String(row.blueprint_id), promptArtifactId: String(row.prompt_artifact_id), status: row.status as ExecutionRecord["status"], outputLocation: String(row.output_location), verificationNotes: String(row.verification_notes), createdAt: String(row.created_at) };
+    return { id: String(row.id), blueprintId: String(row.blueprint_id), promptArtifactId: String(row.prompt_artifact_id), status: row.status as ExecutionRecord["status"], inputPrompt: String(row.input_prompt ?? ""), generatedOutput: String(row.generated_output ?? ""), artifactType: String(row.artifact_type ?? ""), artifactLocation: String(row.artifact_location ?? row.output_location ?? ""), outputLocation: String(row.output_location ?? ""), verificationNotes: String(row.verification_notes ?? ""), createdAt: String(row.created_at), startedAt: row.started_at ? String(row.started_at) : null, completedAt: row.completed_at ? String(row.completed_at) : null };
+  }
+
+  private ensureColumn(table: string, column: string, definition: string): void {
+    const columns = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!columns.some((candidate) => candidate.name === column)) this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
 }

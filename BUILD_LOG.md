@@ -37,6 +37,14 @@
 - **AI contributions:** Implemented the approved user journey and updated the demo narrative with capture points and judging walkthrough.
 - **Verification results:** `npm test` passed: 5 test files and 8 tests. `npm run typecheck` passed. `npm run build` passed for shared, prompts, API, and web packages. The workspace still has no visible Git metadata, so branch/tag state was not independently verifiable.
 
+## 2026-07-15 — Codex integration milestone
+
+- **Codex model used:** Codex runtime; exact model identifier is not exposed in this workspace.
+- **Human architectural decisions:** Keep AI execution provider-neutral; defer all external AI requests and credentials; require execution records to preserve prompt, output, artifact metadata, timestamps, failure evidence, and human verification notes.
+- **AI implementation contributions:** Added `AiProvider`, deterministic `MockAiProvider`, `ExecutionService`, lifecycle persistence, execution/verification routes, frontend execution launcher/result/evidence panels, lifecycle tests, and integration documentation.
+- **Features implemented:** `POST /api/executions`, enriched `GET /api/executions/:id`, `POST /api/executions/:id/verify`, completed/failed mock execution handling, schema migration for existing SQLite records, and BlueprintDetail workflow from prompt generation to verification.
+- **Verification results:** `npm test` passed: 7 test files and 12 tests. `npm run typecheck` passed. `npm run build` passed for shared, prompts, API, and web packages. No external AI requests were made.
+
 ## Log format for future entries
 
 For each meaningful milestone, record the date, model used, repository state, major decisions, implemented features, human decisions, AI contributions, verification results, and any follow-up risks or approvals required.

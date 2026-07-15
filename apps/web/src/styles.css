@@ -27,6 +27,14 @@ button:disabled { cursor: wait; opacity: .65; }
 .field input, .field textarea { width: 100%; border: 1px solid rgba(148, 163, 184, .16); border-radius: .65rem; background: rgba(2, 6, 23, .55); padding: .7rem .8rem; color: rgb(226 232 240); font-size: .875rem; font-weight: 400; outline: none; transition: border-color .2s ease, box-shadow .2s ease; }
 .field textarea { resize: vertical; line-height: 1.55; }
 .field input:focus, .field textarea:focus { border-color: rgba(34, 211, 238, .7); box-shadow: 0 0 0 3px rgba(34, 211, 238, .1); }
+.field-input { width: 100%; resize: vertical; border: 1px solid rgba(148, 163, 184, .16); border-radius: .65rem; background: rgba(2, 6, 23, .55); padding: .7rem .8rem; color: rgb(226 232 240); font-size: .875rem; outline: none; }
+.field-input:focus { border-color: rgba(34, 211, 238, .7); box-shadow: 0 0 0 3px rgba(34, 211, 238, .1); }
+.meta-label { color: rgb(100 116 139); font-size: .68rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.meta-value { margin-top: .35rem; color: rgb(203 213 225); font-size: .78rem; }
+.status { display: inline-flex; border-radius: 999px; padding: .3rem .65rem; font-size: .7rem; font-weight: 650; }
+.status-pending, .status-running { background: rgba(34, 211, 238, .1); color: rgb(103 232 249); }
+.status-completed { background: rgba(52, 211, 153, .1); color: rgb(110 231 183); }
+.status-failed { background: rgba(251, 113, 133, .1); color: rgb(253 164 175); }
 .empty-panel { display: flex; align-items: center; gap: 1rem; border: 1px dashed rgba(148, 163, 184, .22); border-radius: 1rem; padding: 2rem; color: rgb(148 163 184); }
 .step-icon { color: rgb(34 211 238); font-family: ui-monospace, monospace; font-size: .8rem; }
 .alert-error { border: 1px solid rgba(251, 113, 133, .3); border-radius: .75rem; background: rgba(251, 113, 133, .1); padding: .85rem 1rem; color: rgb(254 205 211); font-size: .875rem; }
