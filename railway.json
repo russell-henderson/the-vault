@@ -2,8 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "npm run build --workspace @the-vault/shared && npm run build --workspace @the-vault/prompts && npm run build --workspace @the-vault/api"
-  },
+    "buildCommand": "npm run build --workspace @the-vault/shared && npm run build --workspace @the-vault/prompts && npm run build --workspace @the-vault/api && npm run build --workspace @the-vault/web"
   "deploy": {
     "startCommand": "node apps/api/dist/server.js"
   }
