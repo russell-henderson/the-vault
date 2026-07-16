@@ -1,0 +1,1 @@
+web: npx serve -s apps/web/dist -l $PORT
