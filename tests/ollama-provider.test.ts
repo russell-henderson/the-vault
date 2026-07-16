@@ -27,4 +27,13 @@ describe("Ollama provider", () => {
     await expect(new OllamaAiProvider("http://ollama.test", "demo-model").generateBlueprint({ brief: "Build a panel" })).rejects.toThrow("invalid JSON");
     fetchMock.mockRestore();
   });
+
+  it("repairs omitted structural fields with visible warnings", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ response: JSON.stringify({ blueprint: { name: "Analytics Panel" }, plan: { summary: "Build it" }, warnings: [] }) }), { status: 200 }));
+    const result = await new OllamaAiProvider("http://ollama.test", "analysis-model", "creation-model").generateBlueprint({ brief: "Build an analytics panel" });
+    expect(result.proposal.blueprint.targetPath).toBe("src/components/AnalyticsPanel.tsx");
+    expect(result.proposal.blueprint.framework).toBe("React + Tailwind");
+    expect(result.proposal.warnings[0]).toContain("omitted");
+    fetchMock.mockRestore();
+  });
 });

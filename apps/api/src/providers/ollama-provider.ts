@@ -11,10 +11,84 @@ const blueprintInstruction = `You are an architecture assistant. Convert the use
 }
 Keep the implementation bounded. Never invent secrets. Make assumptions explicit. Use concise, concrete values suitable for human review.`;
 
+const blueprintResponseFormat = {
+  type: "object",
+  additionalProperties: false,
+  required: ["blueprint", "plan", "warnings"],
+  properties: {
+    blueprint: {
+      type: "object",
+      additionalProperties: false,
+      required: ["name", "description", "targetPath", "language", "framework", "dependencies", "architectureOverview", "coreLogic", "layoutDesign", "constraints"],
+      properties: {
+        name: { type: "string" }, description: { type: "string" }, targetPath: { type: "string" }, language: { type: "string" }, framework: { type: "string" },
+        dependencies: { type: "array", items: { type: "string" } }, architectureOverview: { type: "string" }, coreLogic: { type: "string" }, layoutDesign: { type: "string" }, constraints: { type: "array", items: { type: "string" } }
+      }
+    },
+    plan: {
+      type: "object",
+      additionalProperties: false,
+      required: ["summary", "steps", "filesToTouch", "assumptions", "acceptanceCriteria"],
+      properties: {
+        summary: { type: "string" }, steps: { type: "array", items: { type: "string" } }, filesToTouch: { type: "array", items: { type: "string" } }, assumptions: { type: "array", items: { type: "string" } }, acceptanceCriteria: { type: "array", items: { type: "string" } }
+      }
+    },
+    warnings: { type: "array", items: { type: "string" } }
+  }
+};
+
 function cleanJson(value: string): string {
   const trimmed = value.trim();
   if (trimmed.startsWith("```") && trimmed.endsWith("```")) return trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
   return trimmed;
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function asString(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()) : [];
+}
+
+function normalizeProposal(value: unknown, brief: string): unknown {
+  const root = asObject(value);
+  const rawBlueprint = asObject(root.blueprint);
+  const rawPlan = asObject(root.plan);
+  const name = asString(rawBlueprint.name, "Generated feature blueprint");
+  const fileStem = name.replace(/[^a-zA-Z0-9]+/g, "").replace(/^./, (character) => character.toUpperCase()) || "GeneratedFeature";
+  const defaults: Array<[string, unknown]> = [
+    ["blueprint.targetPath", rawBlueprint.targetPath], ["blueprint.language", rawBlueprint.language], ["blueprint.framework", rawBlueprint.framework]
+  ];
+  const repaired = defaults.filter(([, candidate]) => typeof candidate !== "string" || !candidate.trim()).map(([path]) => path);
+  const warnings = asStringArray(root.warnings);
+  if (repaired.length > 0) warnings.push(`Ollama omitted ${repaired.join(", ")}; review the inserted defaults before approval.`);
+  return {
+    blueprint: {
+      name,
+      description: asString(rawBlueprint.description, brief),
+      targetPath: asString(rawBlueprint.targetPath, `src/components/${fileStem}.tsx`),
+      language: asString(rawBlueprint.language, "TypeScript"),
+      framework: asString(rawBlueprint.framework, "React + Tailwind"),
+      dependencies: asStringArray(rawBlueprint.dependencies),
+      architectureOverview: asString(rawBlueprint.architectureOverview, `A bounded component derived from this brief: ${brief}`),
+      coreLogic: asString(rawBlueprint.coreLogic, brief),
+      layoutDesign: asString(rawBlueprint.layoutDesign, "Responsive, accessible UI with explicit loading, error, empty, and ready states."),
+      constraints: asStringArray(rawBlueprint.constraints)
+    },
+    plan: {
+      summary: asString(rawPlan.summary, "Implement the requested feature within the approved blueprint boundary."),
+      steps: asStringArray(rawPlan.steps).length > 0 ? asStringArray(rawPlan.steps) : ["Define the typed data boundary.", "Implement the requested component states.", "Verify the acceptance criteria."],
+      filesToTouch: asStringArray(rawPlan.filesToTouch).length > 0 ? asStringArray(rawPlan.filesToTouch) : [`src/components/${fileStem}.tsx`, `tests/${fileStem}.test.tsx`],
+      assumptions: asStringArray(rawPlan.assumptions),
+      acceptanceCriteria: asStringArray(rawPlan.acceptanceCriteria).length > 0 ? asStringArray(rawPlan.acceptanceCriteria) : ["The generated behavior is reviewed against the original brief."]
+    },
+    warnings
+  };
 }
 
 export class OllamaAiProvider implements AiProvider {
@@ -41,11 +115,11 @@ export class OllamaAiProvider implements AiProvider {
 
   async generateBlueprint(request: BlueprintGenerateRequest): Promise<BlueprintGenerateResult> {
     const started = Date.now();
-    const response = await this.request({ model: this.analysisModel, system: blueprintInstruction, prompt: request.brief, stream: false, format: "json" });
+    const response = await this.request({ model: this.analysisModel, system: blueprintInstruction, prompt: request.brief, stream: false, format: blueprintResponseFormat });
     let parsed: unknown;
     try { parsed = JSON.parse(cleanJson(response.response ?? "")); } catch { throw new Error("Ollama returned invalid JSON for the blueprint proposal"); }
     const metadata = { name: this.name, model: this.analysisModel, durationMs: Date.now() - started } as const;
-    const proposal = blueprintProposalSchema.omit({ provider: true }).safeParse(parsed);
+    const proposal = blueprintProposalSchema.omit({ provider: true }).safeParse(normalizeProposal(parsed, request.brief));
     if (!proposal.success) throw new Error(`Ollama blueprint validation failed: ${proposal.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
     return { proposal: { ...proposal.data, provider: metadata }, metadata };
   }
