@@ -52,6 +52,20 @@
 - **Documentation:** Updated README, demo story, demo script, and implemented architecture diagram to describe the current mock-provider workflow accurately.
 - **Verification results:** `npm run seed:demo` succeeded. `npm test` passed: 7 test files and 12 tests. `npm run typecheck` passed. `npm run build` passed for shared, prompts, API, and web packages.
 
+## 2026-07-16 — Local AI demo and command-center UI
+
+- **Major decisions:** Use the existing provider boundary for Ollama; keep the deterministic mock as an explicit user-selected fallback; make natural-language brief → validated blueprint → human approval → architecture packet the primary demo path.
+- **Features implemented:** Added shared proposal/implementation-plan schemas, Ollama HTTP adapter with strict JSON validation, provider health reporting, configurable provider selection, SQLite persistence for packet/source metadata, provider metadata on executions, brief composer, proposal review surface, architecture packet rendering, stage rail, provider/fallback indicators, and command-center dashboard styling.
+- **Documentation:** Updated README, Ollama setup, demo script, demo story, provider integration notes, and architecture diagram. Added `.env.example`.
+- **Verification results:** `npm test` passed: 8 test files and 15 tests. `npm run typecheck` passed. `npm run build` passed for shared, prompts, API, and web packages. Ollama runtime behavior was covered with mocked HTTP contract tests; a live model run remains environment-dependent.
+- **Follow-up risks:** Model quality and latency vary by local Ollama model. The first implementation stores the generated packet with the blueprint but does not write generated code into the repository.
+
+## 2026-07-16 — Dual local model roles
+
+- **Major decisions:** Configure `llama3.2:3b` for fast structured analysis and blueprint proposals, and `dolphin3:8b` for creation/execution artifacts. Keep both roles configurable and retain `OLLAMA_MODEL` as a compatibility override.
+- **Features implemented:** Ollama requests now select the role-specific model; provider health checks verify both local models; the UI reports the analysis → creation model pair; setup and demo documentation use the exact installed model tags.
+- **Verification results:** Role-specific provider behavior is covered by the Ollama contract tests. `npm test` passed: 8 test files and 15 tests. `npm run typecheck` passed. `npm run build` passed for shared, prompts, API, and web packages. The local `ollama list` command could not be executed in the restricted runner, so live Ollama availability remains environment-dependent.
+
 ## Log format for future entries
 
 For each meaningful milestone, record the date, model used, repository state, major decisions, implemented features, human decisions, AI contributions, verification results, and any follow-up risks or approvals required.

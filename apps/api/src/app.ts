@@ -1,13 +1,14 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { generateCodexPrompt } from "@the-vault/prompts";
-import { blueprintInputSchema, executionCreateSchema, verificationInputSchema } from "@the-vault/shared";
+import { blueprintInputSchema, blueprintProposalSchema, briefInputSchema, executionCreateSchema, providerStatusSchema, verificationInputSchema } from "@the-vault/shared";
 import { VaultRepository } from "./repository.js";
 import { MockAiProvider } from "./providers/mock-provider.js";
 import type { AiProvider } from "./providers/types.js";
+import { createConfiguredProvider } from "./providers/configured-provider.js";
 import { ExecutionService } from "./services/execution-service.js";
 
-export function buildApp(repository = new VaultRepository(), provider: AiProvider = new MockAiProvider()): FastifyInstance {
+export function buildApp(repository = new VaultRepository(), provider: AiProvider = createConfiguredProvider()): FastifyInstance {
   const app = Fastify({ logger: true });
   void app.register(cors, { origin: true });
   const executionService = new ExecutionService(repository, provider);
@@ -26,6 +27,29 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
   });
 
   app.get("/api/blueprints", async () => repository.listBlueprints());
+
+  app.get("/api/providers/status", async () => {
+    const health = await provider.health();
+    return providerStatusSchema.parse({ configured: { name: provider.name, model: health.model }, models: health.models, available: health.available, detail: health.detail, fallbackAvailable: provider.name !== "mock" });
+  });
+
+  app.post("/api/blueprint-proposals", async (request, reply) => {
+    const parsed = briefInputSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid brief", issues: parsed.error.flatten() });
+    const selectedProvider = parsed.data.provider === "mock" ? new MockAiProvider() : provider;
+    try {
+      const result = await selectedProvider.generateBlueprint({ brief: parsed.data.brief });
+      const proposal = blueprintProposalSchema.parse({
+        ...result.proposal,
+        blueprint: { ...result.proposal.blueprint, implementationPlan: result.proposal.plan, source: selectedProvider.name === "ollama" ? "ollama" : "mock", sourceBrief: parsed.data.brief },
+        provider: result.metadata
+      });
+      return reply.code(201).send(proposal);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to generate blueprint proposal";
+      return reply.code(503).send({ error: "Blueprint proposal failed", message, fallbackAvailable: selectedProvider.name !== "mock" });
+    }
+  });
 
   app.get<{ Params: { id: string } }>("/api/blueprints/:id", async (request, reply) => {
     const blueprint = repository.getBlueprint(request.params.id);
@@ -57,7 +81,8 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
     if (!parsed.success) return reply.code(400).send({ error: "Invalid execution request", issues: parsed.error.flatten() });
     const promptArtifact = repository.getPromptArtifact(parsed.data.promptArtifactId);
     if (!promptArtifact) return reply.code(404).send({ error: "Prompt artifact not found" });
-    const execution = await executionService.execute(promptArtifact);
+    const selectedProvider = parsed.data.provider === "mock" ? new MockAiProvider(true) : provider;
+    const execution = selectedProvider === provider ? await executionService.execute(promptArtifact) : await new ExecutionService(repository, selectedProvider).execute(promptArtifact);
     return reply.code(201).send({ ...execution, prompt: promptArtifact.generatedPrompt, evidence: { verificationNotes: execution.verificationNotes } });
   });
 

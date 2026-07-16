@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Milestone 3 introduces the architecture boundary between a compiled Vault specification and an AI-assisted execution. It intentionally does not make external AI requests. The first provider is a deterministic local mock so the workflow, lifecycle, failure behavior, and evidence model can be verified before credentials, network access, or provider-specific policy are introduced.
+The local provider milestone introduces the architecture boundary between a human brief, a structured blueprint proposal, and an AI-assisted execution. Ollama runs locally through HTTP; the deterministic mock remains available for offline development and an explicit fallback.
 
 ## Why a provider abstraction exists
 
@@ -15,6 +15,17 @@ The `AiProvider` interface currently exposes:
 - `stream(request)` — exposes a future incremental response path.
 
 `MockAiProvider` implements all three capabilities without network access. A future OpenAI/Codex adapter can implement the same interface without changing the execution service or UI.
+
+`OllamaAiProvider` implements the same execution contract and adds strict JSON blueprint generation. The provider receives a bounded brief or compiled prompt, never unrestricted workspace access. Model output is parsed and validated against the shared Zod schemas before the UI can approve or persist it.
+
+Configuration is environment-based:
+
+- `AI_PROVIDER=ollama` selects Ollama for configured-provider requests.
+- `OLLAMA_BASE_URL` defaults to `http://localhost:11434`.
+- `OLLAMA_ANALYSIS_MODEL` defaults to `llama3.2:3b` and handles structured brief analysis and blueprint proposals.
+- `OLLAMA_CREATION_MODEL` defaults to `dolphin3:8b` and handles implementation/creation artifacts.
+- `OLLAMA_MODEL` remains supported as a legacy single-model override for both roles.
+- `provider=mock` on `POST /api/blueprint-proposals` explicitly selects the deterministic fallback.
 
 ## Execution lifecycle
 
@@ -38,13 +49,15 @@ The execution record stores the exact input prompt, normalized generated output,
 
 The current API surface is:
 
+- `GET /api/providers/status` — report configured provider, model, and local availability.
+- `POST /api/blueprint-proposals` — turn a natural-language brief into a validated blueprint and implementation packet.
 - `POST /api/executions` — execute a stored prompt artifact through the configured provider.
 - `GET /api/executions/:id` — return status, prompt, output, artifact metadata, and evidence.
 - `POST /api/executions/:id/verify` — append or replace the current verification note.
 
 ## Security considerations
 
-- No external keys or network calls are used by the current provider.
+- Ollama calls are local HTTP requests; no hosted AI key is required.
 - Provider adapters must receive only the approved prompt and explicitly selected context.
 - Never place credentials, tokens, or sensitive source material in prompt artifacts, outputs, or verification notes.
 - Keep provider-specific authentication inside the adapter, not in domain services or UI code.
@@ -54,6 +67,6 @@ The current API surface is:
 
 ## Future provider support
 
-Potential adapters include an OpenAI/Codex workflow, a local model, a hosted enterprise model, or a replay provider for deterministic demos. Each adapter should normalize its response into the same artifact result and preserve provider/model metadata in a future execution metadata field. Streaming can later update a running execution without changing the lifecycle states.
+Potential adapters include an OpenAI/Codex workflow, a hosted enterprise model, or a replay provider for deterministic demos. Each adapter should normalize its response into the same artifact result and preserve provider/model metadata. Streaming can later update a running execution without changing the lifecycle states.
 
 The next architectural decision before external integration is the execution policy: what context Codex may access, whether it may write files, how approvals are represented, and which verification checks are mandatory before an artifact can be accepted.

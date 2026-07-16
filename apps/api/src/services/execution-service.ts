@@ -12,7 +12,7 @@ export class ExecutionService {
       if (!validation.valid) throw new Error(`Provider rejected prompt: ${validation.issues.join(", ")}`);
       this.repository.markExecutionRunning(execution.id);
       const result = await this.provider.generate({ prompt: promptArtifact.generatedPrompt, executionId: execution.id });
-      return this.repository.completeExecution(execution.id, result.output, result.artifactType, result.artifactLocation ?? `memory://executions/${execution.id}`) ?? execution;
+      return this.repository.completeExecution(execution.id, result.output, result.artifactType, result.artifactLocation ?? `memory://executions/${execution.id}`, new Date().toISOString(), result.metadata) ?? execution;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown provider failure";
       return this.repository.failExecution(execution.id, message) ?? { ...execution, status: "failed", verificationNotes: message };

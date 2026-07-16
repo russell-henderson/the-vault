@@ -12,7 +12,7 @@ Architectural knowledge is often scattered across conversations, issue trackers,
 
 ## Current repository state
 
-The initial workspace contains no visible source files, package manifests, configuration, tests, or documentation, and it is not currently a Git repository. The architecture below is therefore a proposed foundation for a new project, not a description of existing code. Technology choices remain an explicit approval point.
+The workspace contains a TypeScript monorepo with React/Vite/Tailwind frontend, Fastify API, SQLite persistence, shared Zod schemas, deterministic prompt generation, Ollama/local-provider adapters, and focused tests. The architecture below describes the implemented local-first workflow and its bounded future expansion.
 
 ## System architecture
 
@@ -21,7 +21,7 @@ The recommended MVP is a small web application with a local or lightweight serve
 1. **Workspace and document layer** — stores project briefs, component blueprints, specifications, decisions, plans, and verification records in a stable, human-readable format.
 2. **Domain model** — represents architectural artifacts and their relationships: project, component, requirement, decision, task, implementation run, and evidence.
 3. **Orchestration engine** — converts approved artifacts into a bounded implementation workflow with ordered tasks, constraints, acceptance criteria, and required checks.
-4. **Codex adapter** — presents the workflow and relevant context to Codex, records the requested actions, and ingests implementation results. The adapter should isolate provider-specific APIs from the domain model.
+4. **Provider adapter** — presents bounded workflow context to Ollama, the deterministic mock, or a future Codex provider, and normalizes results without exposing provider-specific APIs to the domain model.
 5. **Verification layer** — runs or records tests, linting, structural checks, and human review against acceptance criteria.
 6. **User interface** — shows architecture, generated plans, approval gates, execution status, diffs, and verification evidence.
 
@@ -54,11 +54,13 @@ Blueprints, specifications, and decisions
     ↓
 Structured domain model and linked context
     ↓
-Plan generation with constraints and acceptance criteria
+Local model proposal with constraints and acceptance criteria
     ↓
 Human review / approval gate
     ↓
-Codex execution through an isolated adapter
+Deterministic prompt generation
+    ↓
+Provider execution through an isolated adapter
     ↓
 Diffs, tests, and verification evidence
     ↓

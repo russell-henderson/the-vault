@@ -39,4 +39,21 @@ describe("blueprint API workflow", () => {
     expect(response.json<{ error: string; issues: unknown }>().error).toBe("Invalid blueprint");
     await app.close();
   });
+
+  it("generates a validated blueprint proposal and exposes provider status", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+    const status = await app.inject({ method: "GET", url: "/api/providers/status" });
+    expect(status.statusCode).toBe(200);
+    expect(status.json<{ configured: { name: string }; available: boolean }>().configured.name).toBe("mock");
+
+    const proposal = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build an accessible analytics panel.", provider: "mock" } });
+    expect(proposal.statusCode).toBe(201);
+    const result = proposal.json<{ blueprint: { source?: string; implementationPlan?: unknown }; plan: { filesToTouch: string[] }; provider: { name: string; fallback?: boolean } }>();
+    expect(result.blueprint.source).toBe("mock");
+    expect(result.blueprint.implementationPlan).toBeTruthy();
+    expect(result.plan.filesToTouch.length).toBeGreaterThan(0);
+    expect(result.provider.fallback).toBe(true);
+    await app.close();
+  });
 });

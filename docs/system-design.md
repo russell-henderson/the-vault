@@ -14,7 +14,7 @@
 - **Backend:** Node.js with TypeScript and Fastify. Use a single language across the product to maximize Build Week velocity and share domain types.
 - **Validation:** Zod schemas shared between API boundaries and the frontend.
 - **Persistence:** SQLite initially, accessed through Drizzle ORM or a thin typed repository layer. Keep migrations explicit.
-- **AI:** An internal provider-neutral `AiOrchestrator` interface with an OpenAI-backed adapter. The adapter receives a bounded context package and returns normalized prompt/run results.
+- **AI:** An internal provider-neutral `AiProvider` interface with Ollama and deterministic mock adapters. The adapter receives a bounded brief or prompt and returns normalized, schema-validated results.
 - **Testing:** Vitest for unit and integration tests, plus one browser-level end-to-end path with a lightweight test runner once the UI exists.
 - **Deployment:** One Node service serving the built frontend and API, with a local SQLite file and environment-based secrets.
 
@@ -50,7 +50,7 @@ server/
   domain/              blueprint, execution, artifact, verification rules
   services/            validation, prompt generation, orchestration
   repositories/        SQLite persistence
-  providers/           OpenAI adapter and deterministic mock adapter
+  providers/           Ollama adapter, configured provider, and deterministic mock adapter
   schemas/             Zod request/response and persisted-record schemas
 ```
 
@@ -64,7 +64,7 @@ SQLite tables should model the trace explicitly:
 
 ### `blueprints`
 
-Stores identity and lifecycle metadata: `id`, `title`, `component_type`, `status`, `current_revision`, `created_at`, and `updated_at`.
+Stores identity, source attribution, optional implementation packet, and lifecycle metadata: `id`, `title`, `component_type`, `source`, `source_brief`, `implementation_plan`, `created_at`, and `updated_at`.
 
 ### `blueprint_revisions`
 
@@ -136,7 +136,7 @@ AiOrchestrator.run(contextPackage) → AiRunResult
 
 `contextPackage` includes the approved blueprint revision, generated prompt, acceptance criteria, repository context selected by the user, and execution constraints. `AiRunResult` includes provider metadata, model metadata when available, response text, structured artifact candidates, requested actions, and warnings.
 
-The adapter must not receive unrestricted workspace access by default. It must not silently expand scope, treat generated output as approved, or write secrets into the execution record. Provider-specific request formats, retries, and authentication remain inside `providers/`.
+The adapter must not receive unrestricted workspace access by default. It must not silently expand scope, treat generated output as approved, or write secrets into the execution record. Provider-specific request formats, retries, health checks, and authentication remain inside `providers/`. Ollama blueprint proposals are parsed as JSON and validated against shared schemas before approval or persistence.
 
 For the hackathon, the first integration can return a generated implementation artifact and file manifest for review. Direct code mutation can be demonstrated through a controlled Codex workflow only after the approval boundary and result capture are working.
 

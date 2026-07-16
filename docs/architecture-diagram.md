@@ -4,13 +4,16 @@
 
 ```text
 Human
-  │ creates structured component blueprint
+  │ writes a natural-language brief
   ▼
 React web workspace
-  │ POST /api/blueprints
+  │ POST /api/blueprint-proposals
   ▼
 Fastify API + shared Zod schemas
-  │ validate and persist
+  │ Ollama or explicit mock proposal
+  ▼
+Validated blueprint + architecture packet
+  │ human approval
   ▼
 SQLite typed repository
   │ blueprint → deterministic prompt artifact
@@ -21,7 +24,7 @@ Prompt compiler
 Execution service
   │ provider-neutral boundary
   ▼
-Mock AI provider
+Ollama or mock AI provider
   │ normalized output
   ▼
 Execution evidence
@@ -37,7 +40,8 @@ Reviewable execution history
 
 ### Frontend
 
-- `Dashboard` — blueprint library and empty state.
+- `Dashboard` — command-center vault, provider signal, metrics, and blueprint library.
+- `BriefComposer` and `BlueprintProposal` — local brief generation, provider choice, and human review.
 - `BlueprintCreate` and `BlueprintForm` — structured, client-validated authoring.
 - `BlueprintDetail` — specification, prompt, execution, result, and verification workflow.
 - `PromptPreview`, `ExecutionLauncher`, `ExecutionResult`, and `VerificationPanel` — visible evidence layers.
@@ -47,7 +51,7 @@ Reviewable execution history
 - Fastify routes for blueprints, prompts, executions, and verification notes.
 - `VaultRepository` for SQLite persistence and additive execution-record migration.
 - `ExecutionService` for provider validation and pending/running/completed/failed transitions.
-- `AiProvider` interface with `MockAiProvider` as the current no-network implementation.
+- `AiProvider` interface with `OllamaAiProvider` and `MockAiProvider` implementations.
 
 ### Data ownership
 

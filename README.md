@@ -3,17 +3,17 @@
 
 # The Vault Architect
 
-The Vault Architect is an AI-native architecture workflow. It turns structured human intent into a validated, persisted, deterministic Codex-ready prompt, a mock execution result, and a traceable verification record.
+The Vault Architect is an AI-native architecture workflow. It turns a human brief into a validated blueprint, a reviewable architecture packet, a provider-specific execution result, and a traceable verification record.
 
 ## What the product does
 
 Vault Architect gives an engineer a visible handoff between architecture and AI-assisted implementation:
 
 ```text
-Blueprint → Validate → Compile prompt → Launch mock execution → Review evidence
+Brief → AI blueprint proposal → Human approval → Compile prompt → Execute locally → Review evidence
 ```
 
-The human remains responsible for the specification and verification. The current demo uses a local mock provider; no external AI key or network request is required.
+The human remains responsible for the specification and verification. Ollama is supported as a local provider; the deterministic mock remains available as an explicit, labeled fallback.
 
 ## Technology stack
 
@@ -21,17 +21,47 @@ The human remains responsible for the specification and verification. The curren
 - Node.js, TypeScript, and Fastify
 - SQLite with a typed repository abstraction
 - Zod for shared validation
-- Provider-neutral AI adapter with a deterministic mock provider
+- Provider-neutral AI adapter with Ollama and deterministic mock providers
 
-## Milestone 1
+## Local Ollama setup
 
-This milestone implements:
+Install Ollama separately, start it, and pull a model:
 
-```text
-Blueprint → Zod validation → SQLite persistence → deterministic prompt → execution record
+```bash
+ollama serve
+ollama pull llama3.2:3b
+ollama pull dolphin3:8b
 ```
 
-External AI APIs are intentionally not connected. The API creates a prompt artifact and execution evidence through the mock provider.
+Use `.env.example` as a reference, then set the variables in the API process. PowerShell example:
+
+```powershell
+$env:AI_PROVIDER="ollama"
+$env:OLLAMA_BASE_URL="http://localhost:11434"
+$env:OLLAMA_ANALYSIS_MODEL="llama3.2:3b"
+$env:OLLAMA_CREATION_MODEL="dolphin3:8b"
+npm run dev:api
+```
+
+POSIX shell example:
+
+```bash
+AI_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_ANALYSIS_MODEL=llama3.2:3b
+OLLAMA_CREATION_MODEL=dolphin3:8b
+npm run dev:api
+```
+
+The dashboard shows both configured model roles. `llama3.2:3b` handles fast structured analysis and blueprint proposals; `dolphin3:8b` handles creation/execution artifacts. If Ollama is unavailable, choose **Deterministic mock fallback** in the brief composer. The fallback is surfaced in the proposal and execution metadata; it is never presented as an Ollama response.
+
+## Current workflow
+
+The current demo implements:
+
+```text
+Brief → structured blueprint proposal → Zod validation → SQLite persistence → architecture packet → deterministic prompt → provider execution → verification record
+```
 
 ## Requirements
 
@@ -57,16 +87,17 @@ npm run dev:web
 
 The API listens on `http://localhost:3001` and stores SQLite data at `apps/api/data/vault.db`. Set `VAULT_DATABASE_PATH` to override the database path.
 
-For a presentation-ready local demo, run `npm run seed:demo` once after installation. It creates the realistic **AI Dashboard Analytics Panel** blueprint if it does not already exist.
+For a presentation-ready local demo, run `npm run seed:demo` once after installation. It creates the realistic **AI Dashboard Analytics Panel** blueprint and its architecture packet if it does not already exist.
 
 ## Three-minute demo workflow
 
-1. Open the dashboard and select **AI Dashboard Analytics Panel**, or create a new blueprint.
-2. Review the structured architecture, technology, dependencies, UI, and constraints.
-3. Select **Generate Codex prompt** and inspect the deterministic prompt artifact.
-4. Select **Launch execution** to run the local mock provider.
-5. Review the generated implementation result and execution status.
-6. Add a verification note documenting what was checked.
+1. Open the dashboard and select **Start with a brief**.
+2. Submit the seeded analytics-panel brief using Ollama or the explicit mock fallback.
+3. Review the generated blueprint, files-to-touch, constraints, and acceptance checks.
+4. Select **Approve & save blueprint**.
+5. Select **Compile prompt**, then **Launch execution**.
+6. Review provider metadata, the generated packet, and the stage rail.
+7. Add a verification note documenting what was checked.
 
 ## API examples
 
@@ -82,6 +113,20 @@ Generate the prompt and execution record:
 
 ```bash
 curl -X POST http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/generate-prompt
+```
+
+Generate a blueprint proposal:
+
+```bash
+curl -X POST http://localhost:3001/api/blueprint-proposals \
+  -H "content-type: application/json" \
+  -d '{"brief":"Build an accessible analytics dashboard panel with loading, error, empty, and ready states.","provider":"configured"}'
+```
+
+Check local provider health:
+
+```bash
+curl http://localhost:3001/api/providers/status
 ```
 
 ## Workspace layout
