@@ -42,7 +42,8 @@ flowchart TD
     Manual -->|POST /api/blueprints| Api
     Api --> Shared
     Api --> Orchestrator
-    Orchestrator --> Registry
+    Orchestrator --> Extractor[ConstraintExtractor<br/>platform/language/framework/prohibition gate]
+    Extractor --> Registry
     Registry --> Generator
     Orchestrator -->|Review Required on unsupported, low-confidence, or incompatible intent| Brief
     Generator --> Provider
@@ -165,15 +166,17 @@ sequenceDiagram
     API->>Zod: Validate briefInputSchema
     Zod-->>API: Valid brief
     API->>O: prepare(brief)
-    O->>R: classify(brief)
+    O->>O: extractConstraints(brief)
+    O->>R: classify(brief, constraints)
     R-->>O: Classification + evidence
+    R->>R: Filter incompatible and unrecognized technology constraints
     O->>R: get(recommendedStackId)
     R-->>O: GeneratorDefinition
-    O->>O: Check confidence, margin, domain, platform, stack
+    O->>O: Validate hard constraints, confidence, margin, domain, platform, stack
 
     alt Unsupported or unsafe classification
         O-->>API: review-required
-        API-->>UI: HTTP 422 + reasons + capabilities
+        API-->>UI: HTTP 422 + constraints + reasons + questions
     else Compatible registered generator
         API->>API: Validate selected provider/model
         API->>P: generateBlueprint(brief, synthesis instruction, domain constraints)

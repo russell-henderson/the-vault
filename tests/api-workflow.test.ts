@@ -82,4 +82,19 @@ describe("blueprint API workflow", () => {
     expect(repository.listBlueprints()).toHaveLength(0);
     await app.close();
   });
+
+  it("returns structured Review Required for an unsupported explicit framework", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+    const response = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build a SwiftUI iOS settings application. No web.", provider: "mock" } });
+    const result = response.json<{ status: string; constraints: { frameworks: string[] }; reasons: string[]; questions: string[] }>();
+
+    expect(response.statusCode).toBe(422);
+    expect(result.status).toBe("review-required");
+    expect(result.constraints.frameworks).toEqual(["swiftui"]);
+    expect(result.reasons.join(" ")).toContain("registered generator");
+    expect(result.questions.length).toBeGreaterThan(0);
+    expect(repository.listBlueprints()).toHaveLength(0);
+    await app.close();
+  });
 });

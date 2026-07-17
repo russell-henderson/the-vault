@@ -3,6 +3,7 @@ import type { AiGenerateRequest, AiGenerateResult, AiProvider, BlueprintGenerate
 
 type OllamaResponse = { response?: string; error?: string };
 type OllamaTagsResponse = { models?: Array<{ name?: string }> };
+type StrictBlueprintGenerateRequest = BlueprintGenerateRequest & { generatorId: string; synthesisContext: NonNullable<BlueprintGenerateRequest["synthesisContext"]> };
 
 export function isCloudModel(model: string): boolean {
   return model.toLowerCase().split(":").includes("cloud");
@@ -11,14 +12,6 @@ export function isCloudModel(model: string): boolean {
 export function localModelNames(models: string[]): string[] {
   return [...new Set(models.map((model) => model.trim()).filter((model) => model && !isCloudModel(model)))].sort((left, right) => left.localeCompare(right));
 }
-
-const blueprintInstruction = `You are an architecture assistant. Convert the user's brief into JSON only. Return exactly this shape:
-{
-  "blueprint": { "name": string, "description": string, "targetPath": string, "language": string, "framework": string, "dependencies": string[], "architectureOverview": string, "coreLogic": string, "layoutDesign": string, "constraints": string[] },
-  "plan": { "summary": string, "steps": string[], "filesToTouch": string[], "assumptions": string[], "acceptanceCriteria": string[] },
-  "warnings": string[]
-}
-Keep the implementation bounded. Never invent secrets. Make assumptions explicit. Use concise, concrete values suitable for human review.`;
 
 const blueprintResponseFormat = {
   type: "object",
@@ -64,27 +57,40 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()) : [];
 }
 
-function normalizeProposal(value: unknown, brief: string, request: BlueprintGenerateRequest): unknown {
+function assertStrictBlueprintRequest(request: BlueprintGenerateRequest): asserts request is StrictBlueprintGenerateRequest {
+  if (!request.generatorId || !request.synthesisContext || request.synthesisContext.stackId !== request.generatorId) {
+    throw new Error("Generator selection is mandatory before Ollama synthesis");
+  }
+}
+
+function synthesisInstruction(request: StrictBlueprintGenerateRequest): string {
+  const context = request.synthesisContext;
+  return [
+    "You are an architecture synthesis engine. Convert the validated brief into JSON only.",
+    "Synthesize from first principles within the selected generator context; do not substitute another stack or copy a web template.",
+    `Platform: ${context.platform}. Language: ${context.language}. Allowed frameworks: ${context.frameworkOptions.join(", ")}.`,
+    `Required components: ${context.requiredComponentKinds.join(", ")}.`,
+    `Hard constraints: ${context.constraints.join("; ")}.`,
+    `Prohibited substitutions: ${context.prohibitedSubstitutions.join("; ")}.`,
+    "If the brief cannot be satisfied within this context, return REVIEW_REQUIRED rather than guessing.",
+    "Return exactly the requested blueprint and implementation-plan JSON shape."
+  ].join(" ");
+}
+
+function normalizeProposal(value: unknown, brief: string, request: StrictBlueprintGenerateRequest): unknown {
   const root = asObject(value);
   const rawBlueprint = asObject(root.blueprint);
   const rawPlan = asObject(root.plan);
   const name = asString(rawBlueprint.name, "Generated feature blueprint");
   const fileStem = name.replace(/[^a-zA-Z0-9]+/g, "").replace(/^./, (character) => character.toUpperCase()) || "GeneratedFeature";
-  if (request.generatorId && !request.synthesisContext) throw new Error("Generator synthesis context is required for strict blueprint generation");
-  const synthesisDefaults = request.synthesisContext ? {
-    targetPath: `generated/${fileStem}.${request.synthesisContext.language.toLowerCase() === "swift" ? "swift" : request.synthesisContext.language.toLowerCase() === "python" ? "py" : "tsx"}`,
-    language: request.synthesisContext.language,
-    framework: request.synthesisContext.frameworkOptions[0] ?? request.generatorId ?? "Generated framework",
-    architectureOverview: `A synthesized ${request.synthesisContext.domainProfile} architecture derived from the brief and constrained by the registered domain context.`,
-    coreLogic: `Derive the requested behavior while preserving: ${request.synthesisContext.constraints.join("; ")}.`,
-    layoutDesign: `Synthesize the ${request.synthesisContext.platform} presentation from the brief.`
-  } : {
-    targetPath: `src/components/${fileStem}.tsx`,
-    language: "TypeScript",
-    framework: "React + Tailwind",
-    architectureOverview: `A bounded component derived from this brief: ${brief}`,
-    coreLogic: brief,
-    layoutDesign: "Responsive, accessible UI with explicit loading, error, empty, and ready states."
+  const context = request.synthesisContext;
+  const synthesisDefaults = {
+    targetPath: `generated/${fileStem}.${context.language.toLowerCase() === "swift" ? "swift" : context.language.toLowerCase() === "python" ? "py" : "tsx"}`,
+    language: context.language,
+    framework: context.frameworkOptions[0] ?? request.generatorId,
+    architectureOverview: `A synthesized ${context.domainProfile} architecture derived from the brief and constrained by the registered domain context.`,
+    coreLogic: `Derive the requested behavior while preserving: ${context.constraints.join("; ")}.`,
+    layoutDesign: `Synthesize the ${context.platform} presentation from the brief.`
   };
   const missingCandidates: Array<[string, unknown]> = [
     ["blueprint.targetPath", rawBlueprint.targetPath], ["blueprint.language", rawBlueprint.language], ["blueprint.framework", rawBlueprint.framework]
@@ -92,13 +98,18 @@ function normalizeProposal(value: unknown, brief: string, request: BlueprintGene
   const repaired = missingCandidates.filter(([, candidate]) => typeof candidate !== "string" || !candidate.trim()).map(([path]) => path);
   const warnings = asStringArray(root.warnings);
   if (repaired.length > 0) warnings.push(`Ollama omitted ${repaired.join(", ")}; review the inserted defaults before approval.`);
+
+  const returnedLanguage = asString(rawBlueprint.language, synthesisDefaults.language);
+  const returnedFramework = asString(rawBlueprint.framework, synthesisDefaults.framework);
+  if (returnedLanguage !== context.language) throw new Error(`Ollama returned language ${returnedLanguage}, outside the selected ${request.generatorId} context`);
+  if (!context.frameworkOptions.includes(returnedFramework)) throw new Error(`Ollama returned framework ${returnedFramework}, outside the selected ${request.generatorId} context`);
   return {
     blueprint: {
       name,
       description: asString(rawBlueprint.description, brief),
       targetPath: asString(rawBlueprint.targetPath, synthesisDefaults.targetPath),
-      language: asString(rawBlueprint.language, synthesisDefaults.language),
-      framework: asString(rawBlueprint.framework, synthesisDefaults.framework),
+      language: returnedLanguage,
+      framework: returnedFramework,
       dependencies: asStringArray(rawBlueprint.dependencies),
       architectureOverview: asString(rawBlueprint.architectureOverview, synthesisDefaults.architectureOverview),
       coreLogic: asString(rawBlueprint.coreLogic, synthesisDefaults.coreLogic),
@@ -108,7 +119,7 @@ function normalizeProposal(value: unknown, brief: string, request: BlueprintGene
     plan: {
       summary: asString(rawPlan.summary, "Implement the requested feature within the approved blueprint boundary."),
       steps: asStringArray(rawPlan.steps).length > 0 ? asStringArray(rawPlan.steps) : ["Define the typed data boundary.", "Implement the requested component states.", "Verify the acceptance criteria."],
-      filesToTouch: asStringArray(rawPlan.filesToTouch).length > 0 ? asStringArray(rawPlan.filesToTouch) : [`src/components/${fileStem}.tsx`, `tests/${fileStem}.test.tsx`],
+      filesToTouch: asStringArray(rawPlan.filesToTouch).length > 0 ? asStringArray(rawPlan.filesToTouch) : [synthesisDefaults.targetPath],
       assumptions: asStringArray(rawPlan.assumptions),
       acceptanceCriteria: asStringArray(rawPlan.acceptanceCriteria).length > 0 ? asStringArray(rawPlan.acceptanceCriteria) : ["The generated behavior is reviewed against the original brief."]
     },
@@ -139,8 +150,9 @@ export class OllamaAiProvider implements AiProvider {
   }
 
   async generateBlueprint(request: BlueprintGenerateRequest): Promise<BlueprintGenerateResult> {
+    assertStrictBlueprintRequest(request);
     const started = Date.now();
-    const response = await this.request({ model: this.analysisModel, system: request.instruction ?? blueprintInstruction, prompt: request.brief, stream: false, format: blueprintResponseFormat });
+    const response = await this.request({ model: this.analysisModel, system: request.instruction ?? synthesisInstruction(request), prompt: request.brief, stream: false, format: blueprintResponseFormat });
     let parsed: unknown;
     try { parsed = JSON.parse(cleanJson(response.response ?? "")); } catch { throw new Error("Ollama returned invalid JSON for the blueprint proposal"); }
     const metadata = { name: this.name, model: this.analysisModel, durationMs: Date.now() - started } as const;

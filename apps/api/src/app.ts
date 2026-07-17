@@ -72,7 +72,7 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
     const parsed = briefInputSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid brief", issues: parsed.error.flatten() });
     const preparation = architectureOrchestrator.prepare(parsed.data.brief);
-    if (preparation.status !== "ready") return reply.code(422).send({ status: "review-required", classification: preparation.classification, reasons: preparation.reasons, availableGenerators: architectureOrchestrator.registry.listCapabilities() });
+    if (preparation.status !== "ready") return reply.code(422).send({ status: "review-required", classification: preparation.classification, constraints: preparation.constraints, reasons: preparation.reasons, questions: preparation.questions, availableGenerators: architectureOrchestrator.registry.listCapabilities() });
     const selection = parsed.data.analysis ?? selectionFromLegacy(parsed.data.provider, provider, "analysis");
     const selectedProvider = providerForSelection(selection, "analysis", provider);
     if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });

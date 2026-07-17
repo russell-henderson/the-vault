@@ -110,6 +110,22 @@
 - **Behavioral result:** SwiftUI is no longer treated as SpriteKit. Because SwiftUI is not registered in the initial three-stack registry, ambiguous SwiftUI briefs enter `Review Required` rather than defaulting to React or SpriteKit.
 - **Verification:** Added regression coverage for SwiftUI conflict handling, weighted classification, synthesis instructions, strict packet framework validation, mandatory mock context, and existing workflows. `npm run typecheck`, `npm run build`, and `npm run seed:demo` passed. `npm test` passed with 12 files and 35 tests.
 
+## 2026-07-16 — Constraint extraction and hard routing gate
+
+- **Problem addressed:** Explicit brief constraints could be treated as ordinary signals, allowing a ranked generator to win even when platform, language, framework, or prohibition requirements were incompatible.
+- **Features implemented:** Added token/phrase-based `ConstraintExtractor`; integrated extraction before registry classification; filtered generators against all required constraints; treated explicit prohibitions as non-overridable; added strict generator constraint validation; appended hard-constraint instructions to synthesis prompts; and returned structured `Review Required` responses with extracted constraints and clarifying questions.
+- **Behavioral result:** Supported Swift/SpriteKit mobile briefs route to the native generator. SwiftUI briefs remain `Review Required` because SwiftUI is not registered; they never fall back to React/Tailwind. Conflicting mobile/web requirements and prohibited React/web stacks also require review.
+- **Verification:** `npm test` passed with 14 test files and 48 tests. `npm run typecheck`, `npm run build`, and `git diff --check` passed.
+
+## Log format for future entries
+
+## 2026-07-17 — Provider boundary and unknown-framework hardening
+
+- **Problem addressed:** Ollama retained a direct legacy React + Tailwind normalization path when called without generator context, and unknown framework mentions such as Vue were not preserved as constraints.
+- **Features implemented:** Ollama now rejects missing or mismatched generator context before making a provider request; strict normalization defaults only from the selected synthesis context and rejects model output outside that context. Constraint extraction records unrecognized technology mentions, and the registry returns `Review Required` instead of ranking those briefs into a registered web generator.
+- **Compatibility:** The orchestrator flow and intentional structured manual blueprint endpoint remain unchanged.
+- **Verification:** `npm test` passed with 14 test files and 53 tests. `npm run typecheck`, `npm run build`, and `git diff --check` passed.
+
 ## Log format for future entries
 
 For each meaningful milestone, record the date, model used, repository state, major decisions, implemented features, human decisions, AI contributions, verification results, and any follow-up risks or approvals required.

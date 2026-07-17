@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGeneratorRegistry } from "@the-vault/prompts";
+import { extractConstraints } from "../apps/api/src/services/constraint-extractor.js";
 
 describe("registry-based architecture routing", () => {
   const registry = createGeneratorRegistry();
@@ -27,6 +28,32 @@ describe("registry-based architecture routing", () => {
     expect(result.evidence.recommendedStackId).toBe("swift-spritekit");
     expect(result.evidence.semanticIntegrity).toBeLessThan(0.8);
     expect(result.evidence.conflicts.join(" ")).toContain("SwiftUI");
+  });
+
+  it("filters registry candidates using explicit hard constraints", () => {
+    const brief = "Build a Swift iOS application with SpriteKit physics. No web or React.";
+    const result = registry.classify(brief, extractConstraints(brief));
+
+    expect(result.status).toBe("classified");
+    expect(result.evidence.recommendedStackId).toBe("swift-spritekit");
+    expect(result.evidence.recommendedPlatform).toBe("mobile");
+  });
+
+  it("returns review-required when the requested framework has no generator", () => {
+    const brief = "Build a SwiftUI iOS application. No web.";
+    const result = registry.classify(brief, extractConstraints(brief));
+
+    expect(result.status).toBe("review-required");
+    expect(result.reasons.join(" ")).toContain("swiftui");
+    expect(result.reasons.join(" ")).toContain("registered generator");
+  });
+
+  it("rejects a registered web generator when the brief prohibits web", () => {
+    const brief = "Build a React TypeScript web dashboard, but no web and no React.";
+    const result = registry.classify(brief, extractConstraints(brief));
+
+    expect(result.status).toBe("review-required");
+    expect(result.reasons.join(" ")).toContain("exclude");
   });
 
   it("requires review when strong signals conflict despite high confidence", () => {

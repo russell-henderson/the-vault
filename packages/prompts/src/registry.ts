@@ -6,6 +6,14 @@ export type SignalCategory = "language" | "framework" | "platform" | "domain" | 
 
 export type SignalRule = { id: string; phrases: string[]; weight: number; category: SignalCategory };
 export type ConflictRule = { id: string; phrases: string[]; reason: string };
+export type ConstraintHints = {
+  platforms: string[];
+  languages: string[];
+  frameworks: string[];
+  stackMentions: string[];
+  prohibitions: string[];
+  unrecognizedMentions: string[];
+};
 
 export type GeneratorCapability = {
   id: string;
@@ -26,10 +34,11 @@ export type GeneratorDefinition = GeneratorCapability & {
   frameworkOptions: string[];
   constraints: string[];
   prohibitedSubstitutions: string[];
-  classify(brief: string): ClassificationEvidence;
+  classify(brief: string, constraints?: ConstraintHints): ClassificationEvidence;
   buildInstruction(): string;
   createPacket(brief: string, blueprint: BlueprintInput, evidence: ClassificationEvidence): ArchitecturePacket;
   validateClassification(evidence: ClassificationEvidence): ValidationReport;
+  validateConstraints(constraints: ConstraintHints): ValidationReport;
   validatePacket(packet: ArchitecturePacket): ValidationReport;
 };
 
@@ -44,7 +53,7 @@ function hashText(value: string): string {
 }
 
 function tokenize(value: string): string[] {
-  return value.toLocaleLowerCase().normalize("NFKC").replace(/[^a-z0-9+#]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  return value.toLocaleLowerCase().normalize("NFKC").replace(/\+/g, " ").replace(/[^a-z0-9#]+/g, " ").trim().split(/\s+/).filter(Boolean);
 }
 
 function phraseMatches(tokens: string[], phrase: string): boolean {
@@ -60,7 +69,7 @@ function ruleMatches(tokens: string[], rule: SignalRule | ConflictRule): boolean
   return rule.phrases.some((phrase) => phraseMatches(tokens, phrase));
 }
 
-function contextFor(config: Omit<GeneratorDefinition, "classify" | "buildInstruction" | "createPacket" | "validateClassification" | "validatePacket" | "synthesisContext">): ArchitectureSynthesisContext {
+function contextFor(config: Omit<GeneratorDefinition, "classify" | "buildInstruction" | "createPacket" | "validateClassification" | "validateConstraints" | "validatePacket" | "synthesisContext">): ArchitectureSynthesisContext {
   return architectureSynthesisContextSchema.parse({
     stackId: config.stackId,
     domainProfile: config.domainProfile,
@@ -74,10 +83,12 @@ function contextFor(config: Omit<GeneratorDefinition, "classify" | "buildInstruc
   });
 }
 
-function evidenceFor(config: GeneratorDefinition, brief: string): ClassificationEvidence {
+function evidenceFor(config: GeneratorDefinition, brief: string, constraints?: ConstraintHints): ClassificationEvidence {
   const tokens = tokenize(brief);
   const matchedRules = config.signalRules.filter((rule) => ruleMatches(tokens, rule));
-  const conflicts = config.conflictRules.filter((rule) => ruleMatches(tokens, rule)).map((rule) => rule.reason);
+  const conflicts = config.conflictRules
+    .filter((rule) => rule.phrases.some((phrase) => phraseMatches(tokens, phrase) && !isProhibitedPhrase(phrase, constraints)))
+    .map((rule) => rule.reason);
   const intentSignals = matchedRules.map((rule) => rule.id);
   const positiveScore = matchedRules.reduce((total, rule) => total + rule.weight, 0);
   const frameworkMatched = matchedRules.some((rule) => rule.category === "framework");
@@ -107,6 +118,50 @@ function validateFor(config: GeneratorDefinition, evidence: ClassificationEviden
   return { status: errors.length > 0 ? "failed" : "passed", errors, warnings: [] };
 }
 
+function normalizedTokens(value: string): string[] {
+  return tokenize(value);
+}
+
+function valueMatches(candidate: string, requested: string): boolean {
+  const candidateTokens = normalizedTokens(candidate);
+  const requestedTokens = normalizedTokens(requested);
+  if (requestedTokens.length === 0) return false;
+  return requestedTokens.every((token, index) => candidateTokens[index] === token) || phraseMatches(candidateTokens, requested);
+}
+
+function anyValueMatches(candidates: string[], requested: string[]): boolean {
+  return requested.some((requirement) => candidates.some((candidate) => valueMatches(candidate, requirement)));
+}
+
+function allValuesMatch(candidates: string[], requested: string[]): boolean {
+  return requested.every((requirement) => candidates.some((candidate) => valueMatches(candidate, requirement)));
+}
+
+function isProhibitedPhrase(phrase: string, constraints?: ConstraintHints): boolean {
+  if (!constraints || constraints.prohibitions.length === 0) return false;
+  const phraseTokens = tokenize(phrase);
+  return constraints.prohibitions.some((prohibition) => tokenize(prohibition).some((token) => phraseTokens.includes(token)));
+}
+
+function constraintErrorsFor(config: GeneratorDefinition, constraints: ConstraintHints): string[] {
+  const errors: string[] = [];
+  if (constraints.platforms.length > 0 && !allValuesMatch([config.platform], constraints.platforms)) {
+    errors.push(`Requested platform ${constraints.platforms.join(", ")} is incompatible with ${config.platform}.`);
+  }
+  if (constraints.languages.length > 0 && !allValuesMatch([config.language], constraints.languages)) {
+    errors.push(`Requested language ${constraints.languages.join(", ")} is not supported by ${config.stackId}.`);
+  }
+  if (constraints.frameworks.length > 0 && !allValuesMatch(config.frameworkOptions, constraints.frameworks)) {
+    errors.push(`Requested framework ${constraints.frameworks.join(", ")} is not supported by ${config.stackId}.`);
+  }
+
+  const prohibitedCandidates = [config.stackId, config.platform, config.language, ...config.frameworkOptions];
+  for (const prohibition of constraints.prohibitions) {
+    if (anyValueMatches(prohibitedCandidates, [prohibition])) errors.push(`The brief prohibits ${prohibition}, which conflicts with ${config.stackId}.`);
+  }
+  return errors;
+}
+
 function validatePacketFor(config: GeneratorDefinition, packet: ArchitecturePacket): ValidationReport {
   const parsed = architecturePacketSchema.safeParse(packet);
   const errors = parsed.success ? [] : parsed.error.issues.map((issue) => issue.path.join(".") || issue.message);
@@ -120,12 +175,12 @@ function validatePacketFor(config: GeneratorDefinition, packet: ArchitecturePack
   return { status: errors.length > 0 ? "failed" : "passed", errors, warnings: [] };
 }
 
-function definition(config: Omit<GeneratorDefinition, "classify" | "buildInstruction" | "createPacket" | "validateClassification" | "validatePacket" | "synthesisContext">): GeneratorDefinition {
+function definition(config: Omit<GeneratorDefinition, "classify" | "buildInstruction" | "createPacket" | "validateClassification" | "validateConstraints" | "validatePacket" | "synthesisContext">): GeneratorDefinition {
   const synthesisContext = contextFor(config);
   return {
     ...config,
     synthesisContext,
-    classify: (brief) => evidenceFor({ ...config, synthesisContext } as GeneratorDefinition, brief),
+    classify: (brief, constraints) => evidenceFor({ ...config, synthesisContext } as GeneratorDefinition, brief, constraints),
     buildInstruction: () => [
       "You are an architecture synthesis engine. Derive the blueprint from the user brief using first-principles reasoning.",
       "The registry provides constraints and required components only; do not copy a pre-defined template or silently substitute another stack.",
@@ -139,6 +194,10 @@ function definition(config: Omit<GeneratorDefinition, "classify" | "buildInstruc
     ].join(" "),
     createPacket: (brief, blueprint, evidence) => packetFor({ ...config, synthesisContext } as GeneratorDefinition, brief, blueprint, evidence),
     validateClassification: (evidence) => validateFor({ ...config, synthesisContext } as GeneratorDefinition, evidence),
+    validateConstraints: (constraints) => {
+      const errors = constraintErrorsFor({ ...config, synthesisContext } as GeneratorDefinition, constraints);
+      return { status: errors.length > 0 ? "failed" : "passed", errors, warnings: [] };
+    },
     validatePacket: (packet) => validatePacketFor({ ...config, synthesisContext } as GeneratorDefinition, packet)
   };
 }
@@ -156,13 +215,29 @@ export class GeneratorRegistry {
 
   constructor(definitions: GeneratorDefinition[] = []) { for (const generator of definitions) this.register(generator); }
   register(generator: GeneratorDefinition): void { if (this.definitions.has(generator.stackId)) throw new Error(`Generator already registered: ${generator.stackId}`); this.definitions.set(generator.stackId, generator); }
-  listCapabilities(): GeneratorCapability[] { return [...this.definitions.values()].map(({ version: _version, signalRules: _signals, conflictRules: _conflicts, classify: _classify, buildInstruction: _build, createPacket: _packet, validateClassification: _classification, validatePacket: _validate, ...capability }) => capability); }
+  listCapabilities(): GeneratorCapability[] { return [...this.definitions.values()].map(({ version: _version, signalRules: _signals, conflictRules: _conflicts, classify: _classify, buildInstruction: _build, createPacket: _packet, validateClassification: _classification, validateConstraints: _constraints, validatePacket: _validate, ...capability }) => capability); }
   get(stackId: string): GeneratorDefinition | undefined { return this.definitions.get(stackId); }
-  classify(brief: string): Classification {
-    const ranked = [...this.definitions.values()].map((generator) => generator.classify(brief)).sort((left, right) => right.confidence - left.confidence || right.semanticIntegrity - left.semanticIntegrity);
+  classify(brief: string, constraints?: ConstraintHints): Classification {
+    const allGenerators = [...this.definitions.values()];
+    const compatibleGenerators = constraints && constraints.unrecognizedMentions.length > 0
+      ? []
+      : constraints ? allGenerators.filter((generator) => generator.validateConstraints(constraints).status === "passed") : allGenerators;
+    const ranked = (compatibleGenerators.length > 0 ? compatibleGenerators : allGenerators)
+      .map((generator) => generator.classify(brief, constraints))
+      .sort((left, right) => right.confidence - left.confidence || right.semanticIntegrity - left.semanticIntegrity);
     const top = ranked[0] ?? { recommendedStackId: "unknown", recommendedDomain: "unknown", recommendedPlatform: "unknown", intentSignals: [], architecturalRequirements: [], confidence: 0, semanticIntegrity: 0, conflicts: [], alternatives: [], classifierVersion: "registry-v2-signal-logic" };
     const second = ranked[1];
     const reasons: string[] = [];
+    if (constraints && constraints.unrecognizedMentions.length > 0) reasons.push(`Unrecognized technology mentions require review: ${constraints.unrecognizedMentions.join(", ")}.`);
+    if (constraints && compatibleGenerators.length === 0) {
+      const requested = [...constraints.platforms, ...constraints.languages, ...constraints.frameworks];
+      if (requested.length > 0) reasons.push(`No registered generator satisfies the requested constraints: ${requested.join(", ")}.`);
+      if (constraints.prohibitions.length > 0) reasons.push(`The requested prohibitions exclude every registered generator: ${constraints.prohibitions.join(", ")}.`);
+    }
+    if (constraints && compatibleGenerators.length > 0) {
+      const selected = this.get(top.recommendedStackId);
+      if (selected) reasons.push(...selected.validateConstraints(constraints).errors);
+    }
     if (top.confidence < CONFIDENCE_THRESHOLD) reasons.push("Classification confidence is below the safety threshold.");
     if (top.semanticIntegrity < SEMANTIC_INTEGRITY_THRESHOLD) reasons.push("Classification semantic integrity is below the safety threshold.");
     if (top.conflicts.length > 0) reasons.push(...top.conflicts.map((conflict) => `Conflicting intent: ${conflict}`));

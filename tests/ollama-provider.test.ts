@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { isCloudModel, localModelNames, OllamaAiProvider } from "../apps/api/src/providers/ollama-provider";
 
 describe("Ollama provider", () => {
+  const reactSynthesis = {
+    generatorId: "react-typescript",
+    synthesisContext: { stackId: "react-typescript", domainProfile: "web-dashboard", platform: "web" as const, language: "TypeScript", frameworkOptions: ["React", "React + Tailwind"], requiredComponentKinds: ["ViewLayer"], architecturalTraits: ["browser UI"], constraints: ["Preserve keyboard accessibility."], prohibitedSubstitutions: ["SpriteKit", "Flet", "SwiftUI"] }
+  };
+
   it("normalizes a strict JSON blueprint proposal", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ response: JSON.stringify({
       blueprint: { name: "Panel", description: "A panel", targetPath: "src/Panel.tsx", language: "TypeScript", framework: "React", dependencies: [], architectureOverview: "Boundary", coreLogic: "Render states", layoutDesign: "Accessible layout", constraints: ["No persistence"] },
@@ -9,7 +14,7 @@ describe("Ollama provider", () => {
       warnings: []
     }) }), { status: 200, headers: { "content-type": "application/json" } }));
     const provider = new OllamaAiProvider("http://ollama.test", "analysis-model", "creation-model");
-    const result = await provider.generateBlueprint({ brief: "Build a panel" });
+    const result = await provider.generateBlueprint({ brief: "Build a panel", ...reactSynthesis });
     expect(result.proposal.blueprint.name).toBe("Panel");
     expect(result.metadata.model).toBe("analysis-model");
     expect(fetchMock).toHaveBeenCalledWith("http://ollama.test/api/generate", expect.objectContaining({ method: "POST" }));
@@ -24,15 +29,16 @@ describe("Ollama provider", () => {
 
   it("rejects malformed model output", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ response: "not json" }), { status: 200 }));
-    await expect(new OllamaAiProvider("http://ollama.test", "demo-model").generateBlueprint({ brief: "Build a panel" })).rejects.toThrow("invalid JSON");
+    await expect(new OllamaAiProvider("http://ollama.test", "demo-model").generateBlueprint({ brief: "Build a panel", ...reactSynthesis })).rejects.toThrow("invalid JSON");
     fetchMock.mockRestore();
   });
 
   it("repairs omitted structural fields with visible warnings", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ response: JSON.stringify({ blueprint: { name: "Analytics Panel" }, plan: { summary: "Build it" }, warnings: [] }) }), { status: 200 }));
-    const result = await new OllamaAiProvider("http://ollama.test", "analysis-model", "creation-model").generateBlueprint({ brief: "Build an analytics panel" });
-    expect(result.proposal.blueprint.targetPath).toBe("src/components/AnalyticsPanel.tsx");
-    expect(result.proposal.blueprint.framework).toBe("React + Tailwind");
+    const result = await new OllamaAiProvider("http://ollama.test", "analysis-model", "creation-model").generateBlueprint({ brief: "Build an analytics panel", ...reactSynthesis });
+    expect(result.proposal.blueprint.targetPath).toBe("generated/AnalyticsPanel.tsx");
+    expect(result.proposal.blueprint.framework).toBe("React");
+    expect(result.proposal.plan.filesToTouch).toEqual(["generated/AnalyticsPanel.tsx"]);
     expect(result.proposal.warnings[0]).toContain("omitted");
     fetchMock.mockRestore();
   });
@@ -47,6 +53,27 @@ describe("Ollama provider", () => {
     expect(result.proposal.blueprint.language).toBe("Swift");
     expect(result.proposal.blueprint.framework).toBe("SpriteKit");
     expect(result.proposal.blueprint.framework).not.toBe("React + Tailwind");
+    expect(result.proposal.plan.filesToTouch).toEqual(["generated/PhysicsScene.swift"]);
+    fetchMock.mockRestore();
+  });
+
+  it("rejects missing generator context before making a provider request", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const provider = new OllamaAiProvider("http://ollama.test", "analysis-model");
+
+    await expect(provider.generateBlueprint({ brief: "Build a panel" })).rejects.toThrow("Generator selection is mandatory");
+    expect(fetchMock).not.toHaveBeenCalled();
+    fetchMock.mockRestore();
+  });
+
+  it("rejects model output outside the selected synthesis context", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ response: JSON.stringify({ blueprint: { name: "Physics Scene", language: "TypeScript", framework: "React" }, plan: { summary: "Synthesize it" }, warnings: [] }) }), { status: 200 }));
+
+    await expect(new OllamaAiProvider("http://ollama.test", "analysis-model").generateBlueprint({
+      brief: "Build a SpriteKit physics scene",
+      generatorId: "swift-spritekit",
+      synthesisContext: { stackId: "swift-spritekit", domainProfile: "mobile-physics", platform: "mobile", language: "Swift", frameworkOptions: ["SpriteKit"], requiredComponentKinds: ["PhysicsController"], architecturalTraits: ["physics loop"], constraints: ["Keep physics state explicit."], prohibitedSubstitutions: ["React"] }
+    })).rejects.toThrow("outside the selected swift-spritekit context");
     fetchMock.mockRestore();
   });
 
