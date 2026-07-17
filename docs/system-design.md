@@ -131,6 +131,12 @@ The immutable revision is the trace anchor. The system must never overwrite the 
 
 The application should own intent, scope, validation, persistence, approval, and review. The AI provider should own language generation and, only when explicitly supported by a future execution surface, bounded implementation actions.
 
+## Domain-aware generator routing
+
+Before the provider boundary, `ArchitectureOrchestrator` performs strict registry-based dispatch. It classifies the user brief, checks the confidence threshold and alternative margin, resolves a registered generator, and verifies that the classification’s stack, domain, and platform agree with the generator definition. The registry currently exposes Swift/SpriteKit mobile physics, Python/Flet desktop UI, and React/TypeScript web dashboard generators. No generator is a fallback; unresolved intent enters `Review Required` and is not persisted.
+
+The generator returns an additive Architecture Packet V2. The packet uses dynamic component definitions and references those components from architecture layers and data flows, so the same persistence and provenance model can represent physics controllers, desktop event handlers, or web API adapters. The blueprint retains the existing fields for Phase 1/2 compatibility and stores the packet JSON alongside them.
+
 Define an internal interface conceptually like:
 
 ```text

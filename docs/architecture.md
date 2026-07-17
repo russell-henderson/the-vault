@@ -14,6 +14,14 @@ Architectural knowledge is often scattered across conversations, issue trackers,
 
 The workspace contains a TypeScript monorepo with React/Vite/Tailwind frontend, Fastify API, SQLite persistence, shared Zod schemas, deterministic prompt generation, Ollama/local-provider adapters, and focused tests. The architecture below describes the implemented local-first workflow and its bounded future expansion.
 
+## Phase 4 domain-aware orchestration
+
+The proposal path is now domain-first and registry-driven. `ArchitectureOrchestrator` calls the `GeneratorRegistry` to classify the brief, enforces the confidence threshold, semantic-integrity threshold, and alternative margin, resolves the recommended registered generator, and validates classification evidence against that generator before building provider instructions. The initial registry contains `swift-spritekit`, `python-flet`, and `react-typescript`.
+
+There is no default generator. Unsupported, low-confidence, ambiguous, conflicting, or incompatible intent returns `Review Required` and stops before prompt construction, provider generation, or vault persistence. This preserves human control and prevents a legacy React/Tailwind template from silently receiving a non-web brief. Exact token/phrase matching prevents `SwiftUI` from being treated as `Swift` plus SpriteKit.
+
+The additive Architecture Packet V2 stores stack identity, domain intent, dynamic components, layers, data flows, validation, and provenance. Its component contract supports mobile physics controllers and scene layers, desktop view/event/state components, and web API/accessibility components without changing the orchestrator. The full registry contract is documented in [`registry-generator-engine.md`](registry-generator-engine.md).
+
 ## System architecture
 
 The implemented MVP is a small web application with a local server-side workspace:

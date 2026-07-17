@@ -2,13 +2,14 @@ import type { BlueprintProposal as BlueprintProposalData } from "@the-vault/shar
 import { ProviderStatus } from "./ProviderStatus";
 
 export function BlueprintProposal({ proposal, onApprove, onEdit, saving }: { proposal: BlueprintProposalData; onApprove: () => Promise<void>; onEdit: () => void; saving: boolean }) {
-  const { blueprint, plan, provider, warnings } = proposal;
+  const { blueprint, plan, provider, warnings, classification, architecturePacket } = proposal;
   return <section className="proposal-shell panel">
     <div className="proposal-glow" />
     <div className="relative flex flex-col justify-between gap-4 border-b border-white/10 p-6 sm:flex-row sm:items-start">
       <div><p className="eyebrow">AI proposal · human review required</p><h2 className="section-title text-2xl">{blueprint.name}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">{blueprint.description}</p></div>
       <ProviderStatus status={{ configured: provider, available: true, detail: provider.message ?? "Proposal generated", fallbackAvailable: provider.name !== "mock" }} />
     </div>
+    {classification && architecturePacket && <div className="relative grid gap-4 border-b border-white/10 p-6 sm:grid-cols-[.8fr_1.2fr]"><div><p className="meta-label">Intent classification</p><p className="mt-2 text-sm text-slate-200">{architecturePacket.stack.domainProfile} · <span className="font-mono text-cyan-200">{architecturePacket.stack.id}</span></p><p className="mt-2 text-xs text-slate-500">Confidence {Math.round(classification.evidence.confidence * 100)}% · {classification.evidence.classifierVersion}</p></div><div><p className="meta-label">Dynamic components</p><div className="mt-2 flex flex-wrap gap-2">{architecturePacket.components.map((component) => <span className="signal-pill" key={component.id}>{component.name}</span>)}</div></div></div>}
     <div className="relative grid gap-0 divide-y divide-white/10 lg:grid-cols-[1.1fr_.9fr] lg:divide-x lg:divide-y-0">
       <div className="space-y-6 p-6">
         <div><p className="meta-label">Architecture boundary</p><p className="mt-2 text-sm leading-6 text-slate-300">{blueprint.architectureOverview}</p></div>

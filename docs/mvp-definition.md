@@ -47,6 +47,13 @@ The MVP is optimized for one user working in one project workspace. It is not a 
 
 - Provider-neutral AI integration boundary.
 - Captured model/provider metadata when available.
+
+## Domain-aware routing acceptance
+
+- The proposal workflow classifies intent before generation and resolves only through the registered Swift/SpriteKit, Python/Flet, or React/TypeScript generator definitions.
+- Each successful proposal includes Architecture Packet V2 with stack identity, dynamic components, architecture layers, validation, and provenance.
+- Unsupported, low-confidence, ambiguous, or evidence-incompatible intent enters `Review Required`; it never receives a default template and is not saved.
+- Existing human-authored blueprints and Phase 1/2 exports remain valid.
 - Generated artifact stored as text or structured output with a clear artifact type.
 - Traceability from artifact back to the exact blueprint and prompt revision.
 - Independent analysis and creation model selection per operation.

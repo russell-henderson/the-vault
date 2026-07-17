@@ -63,6 +63,16 @@ The current demo implements:
 Brief → structured blueprint proposal → Zod validation → SQLite persistence → architecture packet → deterministic prompt → provider execution → verification record
 ```
 
+### Phase 4 domain-aware routing
+
+Proposal generation now resolves intent before a prompt is built. `GeneratorRegistry` is the sole authority for the initial stacks:
+
+- `swift-spritekit` — mobile physics, Swift/SpriteKit, scene and physics components.
+- `python-flet` — desktop UI, Python/Flet, view, event, state, and persistence components.
+- `react-typescript` — web dashboard, React/TypeScript, API, accessibility, and persistence components.
+
+The classifier ranks registered capabilities using the brief’s domain signals and applies a confidence and alternative-margin threshold. Unsupported or ambiguous intent returns `Review Required`; it never falls back to React/Tailwind or another template, and no provider prompt or blueprint is saved. A successful proposal carries a versioned dynamic Architecture Packet with component definitions, layers, data flows, validation, and provenance links. See [`docs/architecture.md`](docs/architecture.md) and [`docs/registry-generator-engine.md`](docs/registry-generator-engine.md).
+
 ## Requirements
 
 - Node.js 20+

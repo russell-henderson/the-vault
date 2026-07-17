@@ -37,6 +37,19 @@ describe("Ollama provider", () => {
     fetchMock.mockRestore();
   });
 
+  it("uses strict synthesis constraints instead of a React fallback", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ response: JSON.stringify({ blueprint: { name: "Physics Scene" }, plan: { summary: "Synthesize it" }, warnings: [] }) }), { status: 200 }));
+    const result = await new OllamaAiProvider("http://ollama.test", "analysis-model", "creation-model").generateBlueprint({
+      brief: "Build a SpriteKit physics scene",
+      generatorId: "swift-spritekit",
+      synthesisContext: { stackId: "swift-spritekit", domainProfile: "mobile-physics", platform: "mobile", language: "Swift", frameworkOptions: ["SpriteKit"], requiredComponentKinds: ["PhysicsController"], architecturalTraits: ["physics loop"], constraints: ["Keep physics state explicit."], prohibitedSubstitutions: ["React"] }
+    });
+    expect(result.proposal.blueprint.language).toBe("Swift");
+    expect(result.proposal.blueprint.framework).toBe("SpriteKit");
+    expect(result.proposal.blueprint.framework).not.toBe("React + Tailwind");
+    fetchMock.mockRestore();
+  });
+
   it("filters cloud models and always includes the deterministic mock", async () => {
     expect(isCloudModel("llama3.2:cloud")).toBe(true);
     expect(localModelNames(["llama3.2:cloud", "dolphin3:8b", "dolphin3:8b", "llama3.2-16k:latest"])).toEqual(["dolphin3:8b", "llama3.2-16k:latest"]);

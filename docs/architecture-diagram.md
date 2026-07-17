@@ -16,9 +16,11 @@ React web workspace
   │ POST /api/blueprint-proposals
   ▼
 Fastify API + shared Zod schemas
-  │ Ollama or explicit mock proposal
+  │ classify intent → GeneratorRegistry → validate evidence
+  ├── Review Required (unsupported/ambiguous; no save)
+  │ registered generator instruction + Ollama or explicit mock proposal
   ▼
-Validated blueprint + architecture packet
+Validated blueprint + Architecture Packet V2
   │ human approval
   ▼
 SQLite typed repository
@@ -49,6 +51,7 @@ Reviewable execution history
 
 - `Dashboard` — command-center vault, provider signal, metrics, and blueprint library.
 - `BriefComposer` and `BlueprintProposal` — local brief generation, provider choice, and human review.
+- `ArchitectureOrchestrator` — domain-first classification, strict registry resolution, confidence gating, and packet validation.
 - `ProviderModelSelect` and `ProviderRoleControl` — independent analysis/creation model choices, catalog refresh, availability messaging, and mock fallback.
 - `BlueprintCreate` and `BlueprintForm` — structured, client-validated authoring.
 - `BlueprintDetail` — specification, prompt, execution, result, and verification workflow.
@@ -61,6 +64,7 @@ Reviewable execution history
 - `VaultRepository` for SQLite persistence and additive execution-record migration.
 - `ExecutionService` for provider validation and pending/running/completed/failed transitions.
 - `AiProvider` interface with `OllamaAiProvider` and `MockAiProvider` implementations.
+- `GeneratorRegistry` with Swift/SpriteKit, Python/Flet, and React/TypeScript definitions; each emits domain-specific dynamic components.
 
 ### Data ownership
 
@@ -78,3 +82,5 @@ Blueprint
 The provider is not allowed to redefine the blueprint or silently expand scope. The application owns intent, persistence, lifecycle, and verification; a future provider will own only normalized AI execution.
 
 Selections are ephemeral UI state. Catalog refresh replaces catalog data without resetting valid choices; a selected model that disappears remains visible and must be changed before its operation can run.
+
+Classification is also ephemeral until a reviewed proposal is approved. The registry is the only routing authority; there is no framework default for an unrecognized brief.

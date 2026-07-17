@@ -30,13 +30,15 @@ Show the dashboard headline: **Architecture, with a visible chain of custody.** 
 
 ## 0:25–1:05 — The brief becomes a proposal
 
-Select **Start with a brief**. Use **Refresh catalog** if you pulled a model after opening the app, then choose the analysis model for the proposal. Explain that the local model proposes React + TypeScript + Tailwind, API dependencies, responsive layout, loading/error states, and accessibility constraints.
+Select **Start with a brief**. Use **Refresh catalog** if you pulled a model after opening the app, then choose the analysis model for the proposal. Explain that the orchestrator classifies intent first, resolves the registered React + TypeScript generator for this dashboard brief, and only then asks the local model for API dependencies, responsive layout, loading/error states, and accessibility constraints.
 
 If Ollama is unavailable, choose **Deterministic mock** and explicitly call out the provider badge.
 
 ## 1:05–1:35 — Human approval
 
 Review the proposal card: architecture boundary, constraints, files-to-touch, and acceptance criteria. Select **Approve & save blueprint**.
+
+Point out the classified domain and dynamic packet components. If demonstrating a brief without a supported stack, show the **Review required** state: the system reports the reason and registered choices, with no prompt or blueprint saved.
 
 Say:
 

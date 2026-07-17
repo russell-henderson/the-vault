@@ -50,7 +50,7 @@ Out of scope for the first demo: multi-tenant collaboration, production-grade pe
 - Capture model outputs, tool actions, diffs, and verification results.
 - Add safeguards for missing context, scope expansion, secrets, and destructive operations.
 
-### Phase 4 — User experience
+### Earlier roadmap milestone — User experience
 
 - Add an architecture overview.
 - Add blueprint and decision editing.
@@ -74,14 +74,26 @@ Out of scope for the first demo: multi-tenant collaboration, production-grade pe
 - Add accessible catalog refresh and unavailable-model states.
 - Preserve deterministic mock execution and Phase 1 packet export behavior.
 
+### Phase 4 — Registry-based domain routing (implemented)
+
+- Classify brief intent before selecting a provider prompt or generator.
+- Resolve only through `GeneratorRegistry`; initial definitions are Swift/SpriteKit, Python/Flet, and React/TypeScript.
+- Enforce the `0.78` confidence threshold, alternative margin, and classification-evidence compatibility checks.
+- Return `Review Required` for unsupported or ambiguous intent without generating or persisting a blueprint.
+- Generate and validate Architecture Packet V2 with dynamic components, layers, data flows, and provenance.
+- Preserve legacy blueprint records, provider metadata, execution evidence, and Phase 1 packet exports.
+
+The implementation contract and extension rules are in [`registry-generator-engine.md`](registry-generator-engine.md).
+
 ## Priority order
 
-1. End-to-end traceability from blueprint to verified change.
-2. Human approval and scope control.
-3. Reliable structured data model and persistence.
-4. Useful Codex context packaging and result capture.
-5. Clear UI for the demo workflow.
-6. Integrations, analytics, and extensibility.
+1. Domain classification and strict registry routing before any generation.
+2. End-to-end traceability from blueprint to verified change.
+3. Human approval and scope control.
+4. Reliable structured data model and persistence.
+5. Useful Codex context packaging and result capture.
+6. Clear UI for the demo workflow.
+7. Integrations, analytics, and extensibility.
 
 ## Technical milestones
 

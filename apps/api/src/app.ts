@@ -1,13 +1,14 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { generateCodexPrompt } from "@the-vault/prompts";
-import { blueprintInputSchema, blueprintProposalSchema, briefInputSchema, executionCreateSchema, providerStatusSchema, verificationInputSchema, type ProviderSelection } from "@the-vault/shared";
+import { blueprintInputSchema, blueprintProposalSchema, briefInputSchema, executionCreateSchema, providerStatusSchema, validationReportSchema, verificationInputSchema, type ProviderSelection } from "@the-vault/shared";
 import { VaultRepository } from "./repository.js";
 import { MockAiProvider } from "./providers/mock-provider.js";
 import type { AiProvider } from "./providers/types.js";
 import { createConfiguredProvider } from "./providers/configured-provider.js";
 import { OllamaAiProvider } from "./providers/ollama-provider.js";
 import { ExecutionService } from "./services/execution-service.js";
+import { ArchitectureOrchestrator } from "./services/architecture-orchestrator.js";
 
 const mockSelection: ProviderSelection = { provider: "mock", model: "deterministic-local" };
 
@@ -39,6 +40,7 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
   const app = Fastify({ logger: true });
   void app.register(cors, { origin: true });
   const executionService = new ExecutionService(repository, provider);
+  const architectureOrchestrator = new ArchitectureOrchestrator();
 
   app.setErrorHandler((error, _request, reply) => {
     app.log.error(error);
@@ -69,6 +71,8 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
   app.post("/api/blueprint-proposals", async (request, reply) => {
     const parsed = briefInputSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid brief", issues: parsed.error.flatten() });
+    const preparation = architectureOrchestrator.prepare(parsed.data.brief);
+    if (preparation.status !== "ready") return reply.code(422).send({ status: "review-required", classification: preparation.classification, reasons: preparation.reasons, availableGenerators: architectureOrchestrator.registry.listCapabilities() });
     const selection = parsed.data.analysis ?? selectionFromLegacy(parsed.data.provider, provider, "analysis");
     const selectedProvider = providerForSelection(selection, "analysis", provider);
     if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
@@ -80,11 +84,18 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
       }
     }
     try {
-      const result = await selectedProvider.generateBlueprint({ brief: parsed.data.brief });
+      const synthesisRequest = architectureOrchestrator.buildSynthesisRequest(parsed.data.brief, preparation);
+      const result = await selectedProvider.generateBlueprint(synthesisRequest);
+      const packet = architectureOrchestrator.createPacket(preparation.generator, parsed.data.brief, result.proposal.blueprint, preparation.classification);
+      const validation = validationReportSchema.parse(architectureOrchestrator.validatePacket(preparation.generator, packet));
+      if (validation.status !== "passed") return reply.code(422).send({ status: "validation-failed", classification: preparation.classification, validation });
       const proposal = blueprintProposalSchema.parse({
         ...result.proposal,
-        blueprint: { ...result.proposal.blueprint, implementationPlan: result.proposal.plan, source: selectedProvider.name === "ollama" ? "ollama" : "mock", sourceBrief: parsed.data.brief },
-        provider: result.metadata
+        blueprint: { ...result.proposal.blueprint, implementationPlan: result.proposal.plan, architecturePacket: packet, source: selectedProvider.name === "ollama" ? "ollama" : "mock", sourceBrief: parsed.data.brief },
+        provider: result.metadata,
+        classification: preparation.classification,
+        architecturePacket: packet,
+        validation
       });
       return reply.code(201).send(proposal);
     } catch (error) {

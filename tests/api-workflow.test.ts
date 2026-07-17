@@ -56,4 +56,30 @@ describe("blueprint API workflow", () => {
     expect(result.provider.fallback).toBe(true);
     await app.close();
   });
+
+  it("routes domain-aware proposals through the registry and preserves the packet", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+    const proposal = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build a Swift SpriteKit mobile physics game with collision handling.", analysis: { provider: "mock", model: "deterministic-local" } } });
+    expect(proposal.statusCode).toBe(201);
+    const result = proposal.json<{ classification: { evidence: { recommendedStackId: string } }; architecturePacket: { stack: { id: string }; components: Array<{ kind: string }> }; blueprint: { architecturePacket?: { stack: { id: string } } } }>();
+    expect(result.classification.evidence.recommendedStackId).toBe("swift-spritekit");
+    expect(result.architecturePacket.stack.id).toBe("swift-spritekit");
+    expect(result.architecturePacket.components.map((component) => component.kind)).toContain("PhysicsController");
+
+    const saved = await app.inject({ method: "POST", url: "/api/blueprints", payload: result.blueprint });
+    expect(saved.statusCode).toBe(201);
+    expect(saved.json<{ architecturePacket?: { stack: { id: string } } }>().architecturePacket?.stack.id).toBe("swift-spritekit");
+    await app.close();
+  });
+
+  it("returns Review Required without saving an unsupported stack", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+    const response = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build a Rust command-line compiler plugin.", provider: "mock" } });
+    expect(response.statusCode).toBe(422);
+    expect(response.json<{ status: string; reasons: string[] }>().status).toBe("review-required");
+    expect(repository.listBlueprints()).toHaveLength(0);
+    await app.close();
+  });
 });

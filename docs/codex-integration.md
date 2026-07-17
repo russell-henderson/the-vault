@@ -58,6 +58,12 @@ The current API surface is:
 - `GET /api/executions/:id` — return status, prompt, output, artifact metadata, and evidence.
 - `POST /api/executions/:id/verify` — append or replace the current verification note.
 
+## Phase 4 generator boundary
+
+The Codex/provider boundary is reached only after `ArchitectureOrchestrator` classifies the brief and resolves a compatible `GeneratorDefinition` from `GeneratorRegistry`. The generator supplies stack-specific instructions and produces Architecture Packet V2; it does not alter the provider interface. The initial definitions cover Swift/SpriteKit mobile physics, Python/Flet desktop UI, and React/TypeScript web dashboards.
+
+Classification evidence is checked against the selected generator before the prompt is built. Confidence below `0.78`, semantic integrity below `0.80`, a competing registered stack within `0.10`, an unregistered recommendation, or a domain/platform mismatch returns `Review Required`. Exact token/phrase matching and explicit conflict rules distinguish broad language terms from framework intent, such as Swift versus SwiftUI/SpriteKit. The system does not substitute the legacy React template, call a provider, or persist a blueprint in that state. Packet provenance records the brief, classification, generator, and packet content hash so the later prompt and execution remain traceable.
+
 ## Security considerations
 
 - Ollama calls are local HTTP requests; no hosted AI key is required.

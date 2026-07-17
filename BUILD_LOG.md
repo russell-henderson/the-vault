@@ -96,6 +96,20 @@
 - **Documentation:** Audited and updated README, MVP definition, development plan, architecture, system design, architecture diagram, demo story, demo script, Codex integration notes, and submission notes to describe the live Ollama catalog, independent analysis/creation selections, manual refresh behavior, cloud filtering, deterministic mock fallback, provider validation, packet export, and current API routes.
 - **Verification:** Searched all Markdown documentation for stale pre-Phase-2 provider and API references; historical build-log entries remain unchanged as milestone records.
 
+## 2026-07-16 — Phase 4 registry-based domain routing
+
+- **Origin and decision:** Implement the approved Phase 4 refinement: intent-first classification, a `GeneratorRegistry` as the sole routing authority, three named initial stacks, strict confidence/compatibility gates, and no legacy template fallback.
+- **Features implemented:** Added shared classification evidence, Architecture Packet V2, dynamic component/layer/data-flow contracts, provenance records, registry definitions for Swift/SpriteKit, Python/Flet, and React/TypeScript, `ArchitectureOrchestrator`, strict API proposal routing, packet persistence, domain-aware mock/Ollama defaults, and a visible web `Review Required` state.
+- **Compatibility:** Existing manual blueprints, provider hot-swapping, normalized provider/model metadata, prompt artifacts, execution records, verification notes, and Phase 1 packet exports remain supported.
+- **Verification:** Added registry and API tests for all stack routes, unsupported intent, packet validation, evidence mismatch, duplicate registration, packet persistence, and no-save review gating. `npm test` passed with 12 files and 31 tests. `npm run typecheck`, `npm run build`, and `npm run seed:demo` passed.
+
+## 2026-07-16 — Logical synthesis engine refactor
+
+- **Problem addressed:** Replaced substring-based registry matching and provider/template fallback behavior that could conflate broad language terms with framework intent.
+- **Features implemented:** Added exact token/phrase matching, weighted signal rules, explicit conflict rules, semantic-integrity scoring, mandatory confidence/integrity gates, generator-owned synthesis contexts, first-principles provider instructions, and strict mock/Ollama synthesis-context requirements.
+- **Behavioral result:** SwiftUI is no longer treated as SpriteKit. Because SwiftUI is not registered in the initial three-stack registry, ambiguous SwiftUI briefs enter `Review Required` rather than defaulting to React or SpriteKit.
+- **Verification:** Added regression coverage for SwiftUI conflict handling, weighted classification, synthesis instructions, strict packet framework validation, mandatory mock context, and existing workflows. `npm run typecheck`, `npm run build`, and `npm run seed:demo` passed. `npm test` passed with 12 files and 35 tests.
+
 ## Log format for future entries
 
 For each meaningful milestone, record the date, model used, repository state, major decisions, implemented features, human decisions, AI contributions, verification results, and any follow-up risks or approvals required.

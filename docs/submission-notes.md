@@ -127,6 +127,8 @@ Future support:
 
 The demo loads provider health and the live catalog, lets the user refresh after pulling a model, selects an analysis model for proposal generation, requires human approval, compiles the prompt, selects a creation model for execution, and records provider/model metadata with the result. The user can copy Markdown artifacts or export the full trace as JSON. Cloud-tagged models are hidden by default; the deterministic mock remains available without Ollama.
 
+The proposal path is domain-aware and registry-driven. It classifies intent before generation and supports three initial registered stacks: Swift/SpriteKit for mobile physics, Python/Flet for desktop UI, and React/TypeScript for web dashboards. Classification confidence and generator compatibility are validated before any prompt is built. Unsupported or ambiguous intent enters `Review Required` rather than receiving a legacy template. Successful proposals carry Architecture Packet V2 with dynamic components, layers, data flows, and provenance.
+
 ---
 
 # Technology Stack

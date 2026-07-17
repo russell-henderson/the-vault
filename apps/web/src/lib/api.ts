@@ -5,7 +5,7 @@ export type ExecutionDetails = ExecutionRecord & { prompt: string; evidence: { v
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 export class ApiRequestError extends Error {
-  constructor(message: string, readonly status = 0) {
+  constructor(message: string, readonly status = 0, readonly details?: Record<string, unknown>) {
     super(message);
     this.name = "ApiRequestError";
   }
@@ -27,7 +27,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   if (rawBody.trim()) {
     try { body = JSON.parse(rawBody) as typeof body; } catch { body = { message: rawBody }; }
   }
-  if (!response.ok) throw new ApiRequestError(body.message ?? body.error ?? `Request failed (${response.status})`, response.status);
+  if (!response.ok) throw new ApiRequestError(body.message ?? body.error ?? `Request failed (${response.status})`, response.status, body);
   return body as T;
 }
 

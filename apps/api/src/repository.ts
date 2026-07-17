@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 import { mkdirSync } from "node:fs";
-import type { Blueprint, BlueprintInput, ExecutionRecord, ImplementationPlan, PromptArtifact, ProviderMetadata } from "@the-vault/shared";
+import type { ArchitecturePacket, Blueprint, BlueprintInput, ExecutionRecord, ImplementationPlan, PromptArtifact, ProviderMetadata } from "@the-vault/shared";
 
 type BlueprintRow = Blueprint;
 type PromptRow = PromptArtifact;
@@ -21,7 +21,7 @@ export class VaultRepository {
         target_path TEXT NOT NULL, language TEXT NOT NULL, framework TEXT NOT NULL,
         dependencies_json TEXT NOT NULL, architecture_overview TEXT NOT NULL,
         core_logic TEXT NOT NULL, layout_design TEXT NOT NULL, constraints_json TEXT NOT NULL,
-        implementation_plan_json TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT 'human', source_brief TEXT NOT NULL DEFAULT '',
+        implementation_plan_json TEXT NOT NULL DEFAULT '', architecture_packet_json TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT 'human', source_brief TEXT NOT NULL DEFAULT '',
         created_at TEXT NOT NULL, updated_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS prompt_artifacts (
@@ -46,6 +46,7 @@ export class VaultRepository {
     this.ensureColumn("execution_records", "started_at", "TEXT");
     this.ensureColumn("execution_records", "completed_at", "TEXT");
     this.ensureColumn("blueprints", "implementation_plan_json", "TEXT NOT NULL DEFAULT ''");
+    this.ensureColumn("blueprints", "architecture_packet_json", "TEXT NOT NULL DEFAULT ''");
     this.ensureColumn("blueprints", "source", "TEXT NOT NULL DEFAULT 'human'");
     this.ensureColumn("blueprints", "source_brief", "TEXT NOT NULL DEFAULT ''");
     this.ensureColumn("execution_records", "provider_name", "TEXT");
@@ -59,15 +60,15 @@ export class VaultRepository {
     const now = new Date().toISOString();
     const blueprint: Blueprint = { ...input, id: randomUUID(), createdAt: now, updatedAt: now };
     this.db.prepare(`INSERT INTO blueprints
-      (id,name,description,target_path,language,framework,dependencies_json,architecture_overview,core_logic,layout_design,constraints_json,implementation_plan_json,source,source_brief,created_at,updated_at)
-      VALUES (@id,@name,@description,@targetPath,@language,@framework,@dependencies,@architectureOverview,@coreLogic,@layoutDesign,@constraints,@implementationPlan,@source,@sourceBrief,@createdAt,@updatedAt)`)
-      .run({ ...blueprint, dependencies: JSON.stringify(blueprint.dependencies), constraints: JSON.stringify(blueprint.constraints), implementationPlan: blueprint.implementationPlan ? JSON.stringify(blueprint.implementationPlan) : "", source: blueprint.source ?? "human", sourceBrief: blueprint.sourceBrief ?? "" });
+      (id,name,description,target_path,language,framework,dependencies_json,architecture_overview,core_logic,layout_design,constraints_json,implementation_plan_json,architecture_packet_json,source,source_brief,created_at,updated_at)
+      VALUES (@id,@name,@description,@targetPath,@language,@framework,@dependencies,@architectureOverview,@coreLogic,@layoutDesign,@constraints,@implementationPlan,@architecturePacket,@source,@sourceBrief,@createdAt,@updatedAt)`)
+      .run({ ...blueprint, dependencies: JSON.stringify(blueprint.dependencies), constraints: JSON.stringify(blueprint.constraints), implementationPlan: blueprint.implementationPlan ? JSON.stringify(blueprint.implementationPlan) : "", architecturePacket: blueprint.architecturePacket ? JSON.stringify(blueprint.architecturePacket) : "", source: blueprint.source ?? "human", sourceBrief: blueprint.sourceBrief ?? "" });
     return blueprint;
   }
 
   updateBlueprint(id: string, input: BlueprintInput): Blueprint | undefined {
     const updatedAt = new Date().toISOString();
-    this.db.prepare(`UPDATE blueprints SET name=@name, description=@description, target_path=@targetPath, language=@language, framework=@framework, dependencies_json=@dependencies, architecture_overview=@architectureOverview, core_logic=@coreLogic, layout_design=@layoutDesign, constraints_json=@constraints, implementation_plan_json=@implementationPlan, source=@source, source_brief=@sourceBrief, updated_at=@updatedAt WHERE id=@id`).run({ id, ...input, dependencies: JSON.stringify(input.dependencies), constraints: JSON.stringify(input.constraints), implementationPlan: input.implementationPlan ? JSON.stringify(input.implementationPlan) : "", source: input.source ?? "human", sourceBrief: input.sourceBrief ?? "", updatedAt });
+    this.db.prepare(`UPDATE blueprints SET name=@name, description=@description, target_path=@targetPath, language=@language, framework=@framework, dependencies_json=@dependencies, architecture_overview=@architectureOverview, core_logic=@coreLogic, layout_design=@layoutDesign, constraints_json=@constraints, implementation_plan_json=@implementationPlan, architecture_packet_json=@architecturePacket, source=@source, source_brief=@sourceBrief, updated_at=@updatedAt WHERE id=@id`).run({ id, ...input, dependencies: JSON.stringify(input.dependencies), constraints: JSON.stringify(input.constraints), implementationPlan: input.implementationPlan ? JSON.stringify(input.implementationPlan) : "", architecturePacket: input.architecturePacket ? JSON.stringify(input.architecturePacket) : "", source: input.source ?? "human", sourceBrief: input.sourceBrief ?? "", updatedAt });
     return this.getBlueprint(id);
   }
 
@@ -141,6 +142,7 @@ export class VaultRepository {
       architectureOverview: String(row.architecture_overview), coreLogic: String(row.core_logic), layoutDesign: String(row.layout_design),
       constraints: JSON.parse(String(row.constraints_json)) as string[],
       implementationPlan: row.implementation_plan_json ? JSON.parse(String(row.implementation_plan_json)) as ImplementationPlan : undefined,
+      architecturePacket: row.architecture_packet_json ? JSON.parse(String(row.architecture_packet_json)) as ArchitecturePacket : undefined,
       source: row.source === "ollama" || row.source === "mock" ? row.source : "human",
       sourceBrief: String(row.source_brief ?? "") || undefined,
       createdAt: String(row.created_at), updatedAt: String(row.updated_at)
