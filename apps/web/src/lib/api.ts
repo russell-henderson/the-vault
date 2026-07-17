@@ -1,4 +1,4 @@
-import type { Blueprint, BlueprintInput, BlueprintProposal, ExecutionRecord, PromptArtifact, ProviderCatalog, ProviderSelection, ProviderStatus } from "@the-vault/shared";
+import type { Blueprint, BlueprintInput, BlueprintProposal, DiscoveryResult, ExecutionRecord, PromptArtifact, ProviderCatalog, ProviderSelection, ProviderStatus } from "@the-vault/shared";
 
 export type ExecutionDetails = ExecutionRecord & { prompt: string; evidence: { verificationNotes: string } };
 
@@ -27,7 +27,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   if (rawBody.trim()) {
     try { body = JSON.parse(rawBody) as typeof body; } catch { body = { message: rawBody }; }
   }
-  if (!response.ok) throw new ApiRequestError(body.message ?? body.error ?? `Request failed (${response.status})`, response.status, body);
+  if (!response.ok) {
+    const reasons = Array.isArray(body.reasons) ? body.reasons.filter((reason): reason is string => typeof reason === "string") : [];
+    const questions = Array.isArray(body.questions) ? body.questions.filter((question): question is string => typeof question === "string") : [];
+    const detail = [...reasons, ...questions].join(" ");
+    throw new ApiRequestError(body.message ?? body.error ?? (detail || `Request failed (${response.status})`), response.status, body);
+  }
   return body as T;
 }
 
@@ -35,7 +40,8 @@ export const api = {
   listBlueprints: () => request<Blueprint[]>("/api/blueprints"),
   getProviderStatus: () => request<ProviderStatus>("/api/providers/status"),
   getProviderCatalog: () => request<ProviderCatalog>("/api/providers/models"),
-  generateBlueprintProposal: (brief: string, provider: "configured" | "mock" = "configured", analysis?: ProviderSelection) => request<BlueprintProposal>("/api/blueprint-proposals", { method: "POST", body: JSON.stringify({ brief, provider, ...(analysis ? { analysis } : {}) }) }),
+  analyzeArchitecture: (brief: string, provider: "configured" | "mock" = "configured", analysis?: ProviderSelection) => request<DiscoveryResult>("/api/architecture-discovery", { method: "POST", body: JSON.stringify({ brief, provider, ...(analysis ? { analysis } : {}) }) }),
+  generateBlueprintProposal: (brief: string, generatorId: string, discovery?: DiscoveryResult, provider: "configured" | "mock" = "configured", analysis?: ProviderSelection) => request<BlueprintProposal>("/api/blueprint-proposals", { method: "POST", body: JSON.stringify({ brief, generatorId, provider, ...(analysis ? { analysis } : {}), ...(discovery ? { discovery } : {}) }) }),
   getBlueprint: (id: string) => request<Blueprint>(`/api/blueprints/${id}`),
   createBlueprint: (input: BlueprintInput) => request<Blueprint>("/api/blueprints", { method: "POST", body: JSON.stringify(input) }),
   getPrompt: (id: string) => request<PromptArtifact>(`/api/blueprints/${id}/prompt`),

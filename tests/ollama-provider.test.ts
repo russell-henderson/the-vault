@@ -33,6 +33,20 @@ describe("Ollama provider", () => {
     fetchMock.mockRestore();
   });
 
+  it("keeps Ollama discovery scoped to the supplied registry slice", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ response: JSON.stringify({ domain: "web-dashboard", likelyStackOptions: [{ stackId: "react-typescript", reason: "Dashboard signals fit.", confidence: 0.9 }], recommendedStackId: "react-typescript", missingInfo: [], clarifyingQuestions: [] }) }), { status: 200 }));
+    const result = await new OllamaAiProvider("http://ollama.test", "analysis-model").generateDiscovery({
+      brief: "Build a dashboard",
+      registrySlice: [{ stackId: "react-typescript", domainProfile: "web-dashboard", platform: "web", language: "TypeScript", frameworkOptions: ["React"], supportedIntentSignals: ["dashboard"], architecturalTraits: ["browser UI"], requiredComponentKinds: ["ViewLayer"], constraints: [], prohibitedSubstitutions: [], version: "2.0.0" }],
+      constraints: { platforms: ["web"], languages: ["typescript"], frameworks: [], stackMentions: ["web", "typescript"], prohibitions: [], unrecognizedMentions: [], tokens: ["build", "a", "dashboard"] }
+    });
+    expect(result.result.recommendedStackId).toBe("react-typescript");
+    const request = JSON.parse(String(fetchMock.mock.calls[0]?.[1] && (fetchMock.mock.calls[0][1] as RequestInit).body)) as { system: string };
+    expect(request.system).toContain("Do not invent or substitute a stack");
+    expect(request.system).toContain("react-typescript");
+    fetchMock.mockRestore();
+  });
+
   it("repairs omitted structural fields with visible warnings", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ response: JSON.stringify({ blueprint: { name: "Analytics Panel" }, plan: { summary: "Build it" }, warnings: [] }) }), { status: 200 }));
     const result = await new OllamaAiProvider("http://ollama.test", "analysis-model", "creation-model").generateBlueprint({ brief: "Build an analytics panel", ...reactSynthesis });

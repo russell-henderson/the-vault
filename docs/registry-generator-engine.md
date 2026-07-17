@@ -14,15 +14,19 @@ Phase 4 replaces template-rigid proposal generation with domain-aware routing. T
 
 Adding a generator means registering a new `GeneratorDefinition`; the orchestrator does not require a stack-specific branch. Each definition supplies its id, domain, platform, weighted signal rules, conflict rules, synthesis constraints, required components, packet builder, classification validator, and packet validator.
 
-## Routing contract
+## Stage 6 consultative routing contract
 
 ```text
 brief
   → extractConstraints(brief)
-  → registry.classify(brief, constraints)
+  → registry.discoverySlice(brief, constraints)
+  → ArchitectureAnalyzer
+  → compact registry-backed recommendations + questions
+  → user refinement and explicit generatorId confirmation
+  → re-extractConstraints(refined brief)
+  → registry.get(confirmed generatorId) against the full registry
   → filter generators against hard constraints
-  → confidence threshold + alternative-margin check
-  → registry.get(recommendedStackId)
+  → confidence threshold + semantic-integrity check
   → validateConstraints(extracted constraints)
   → validateClassification(evidence)
   → provider prompt with generator constraints/instruction
@@ -32,6 +36,8 @@ brief
 ```
 
 The current safety thresholds are `0.78` confidence and `0.80` semantic integrity; the top result must also exceed the next registered alternative by `0.10`. A missing registry match, low confidence, low semantic integrity, explicit conflict, close alternatives, or evidence/domain/platform mismatch produces `Review Required`. Exact token/phrase matching means `SwiftUI` is not silently interpreted as SpriteKit. The legacy React blueprint schema remains accepted for manually authored records, but it is not a routing fallback.
+
+Discovery is not final classification. `ArchitectureAnalyzer` returns only a compact, JSON-serializable registry slice, up to three ranked options, confidence, missing information, and clarifying questions. It never creates an `ArchitecturePacket`. A recommendation becomes eligible for synthesis only after the user confirms its `generatorId`.
 
 ## Constraint Extraction Gate
 
@@ -54,7 +60,7 @@ The component collection is intentionally not web-only. Physics controllers, sce
 
 ## API behavior
 
-`POST /api/blueprint-proposals` extracts constraints, classifies and validates before provider selection and generation. A successful response includes `classification`, `architecturePacket`, and `validation`; the packet is also embedded in the blueprint sent for approval. The provider receives a first-principles synthesis instruction plus a validated domain constraint context, not a complete blueprint template. A rejected brief returns HTTP `422` with `status: "review-required"`, reasons, extracted constraints, clarifying questions, classification evidence, and registered capabilities. The UI keeps the brief editable and does not save a record.
+`POST /api/architecture-discovery` extracts constraints, asks the registry for a compact compatible slice, and returns discovery or `review-required`. Its result contains no packet. `POST /api/blueprint-proposals` requires the refined brief and confirmed `generatorId`, then re-extracts constraints and validates against the full registry before provider selection and generation. A successful response includes `classification`, `architecturePacket`, `packet`, `validation`, and confirmed-handoff provenance. The provider receives a first-principles synthesis instruction plus a validated domain constraint context, not a complete blueprint template. A rejected request returns HTTP `422` with `status: "review-required"`, reasons, extracted constraints, clarifying questions, classification evidence, and registered capabilities. The UI keeps discovery ephemeral and does not save a record until the final proposal is approved.
 
 Provider/model selection remains independent from architecture routing. Both the deterministic mock and Ollama require a matching generator id and synthesis context before blueprint generation. They cannot bypass classification or cause an unsupported brief to use a legacy template.
 
@@ -63,6 +69,12 @@ Provider/model selection remains independent from architecture routing. Both the
 Existing Phase 1/2 fields, exports, provider metadata, prompt artifacts, execution records, and human verification remain intact. SQLite stores the packet as an additive JSON column. Packet validation occurs before proposal persistence, and the content hash/provenance chain makes the selected generator and its evidence visible in exports.
 
 ## Verification
+
+## Stage 6 authority policy
+
+The registry is now a policy engine, not only a classifier. Each definition exposes a `GeneratorPolicy` containing implementation platform/language/frameworks, capabilities and a capability fingerprint, supported generator versions, template lifecycle, required/conflicting constraints, lifecycle status, metadata, and a deterministic policy hash. `validateRequest` rejects unknown, unsupported, disabled, deprecated-without-override, version-incompatible, template-incompatible, capability-incompatible, constraint-conflicting, registry-drifted, and policy-hash-drifted requests. `getAuthorizedOptions` returns only the current supported registry slice.
+
+Discovery is untrusted enrichment. It returns `suggestedGeneratorId`, visible unsupported discoveries, explicit constraints, and enrichment provenance; it never creates a packet or selects an executable generator. The Orchestrator re-extracts constraints, validates the confirmed ID through the registry, creates the authorization provenance, and passes only the authorized context to a provider. Any failed check returns `review-required` before provider access or persistence. Successful packet provenance pins the registry version, policy hash, generator version, template, request ID, and orchestrator version. The manual structured blueprint endpoint remains a separate trusted-input path.
 
 Registry and orchestrator tests cover all three classifications, hard constraint filtering, unsupported frameworks, prohibitions, conflicting intent, duplicate registration, required dynamic components, evidence mismatch, and packet validation. API tests cover packet persistence and structured no-save `Review Required` responses. Run:
 

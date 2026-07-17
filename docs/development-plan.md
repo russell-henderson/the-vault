@@ -22,6 +22,8 @@ Brief → analysis provider/model selection → validated proposal → human app
 
 Provider selections are ephemeral and per operation. The live Ollama catalog is manually refreshed, cloud-tagged models are hidden, and the deterministic mock remains selectable when Ollama is unavailable.
 
+Stage 6 authority-boundary migration is implemented: enrichment can discover but cannot authorize, registry policy is explicit and hash-pinned, and the orchestrator blocks providers until registry validation passes. Unsupported, deprecated, disabled, conflicting, or version-drifted requests return `review-required` without packet creation or persistence.
+
 Out of scope for the first demo: multi-tenant collaboration, production-grade permissions, autonomous unreviewed merges, broad IDE support, complex graph analytics, and a large plugin marketplace.
 
 ## Development phases

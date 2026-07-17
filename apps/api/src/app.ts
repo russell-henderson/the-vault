@@ -1,13 +1,14 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { generateCodexPrompt } from "@the-vault/prompts";
-import { blueprintInputSchema, blueprintProposalSchema, briefInputSchema, executionCreateSchema, providerStatusSchema, validationReportSchema, verificationInputSchema, type ProviderSelection } from "@the-vault/shared";
+import { blueprintInputSchema, blueprintProposalSchema, briefInputSchema, discoveryInputSchema, discoveryResultSchema, executionCreateSchema, providerStatusSchema, validationReportSchema, verificationInputSchema, type ProviderSelection } from "@the-vault/shared";
 import { VaultRepository } from "./repository.js";
 import { MockAiProvider } from "./providers/mock-provider.js";
 import type { AiProvider } from "./providers/types.js";
 import { createConfiguredProvider } from "./providers/configured-provider.js";
 import { OllamaAiProvider } from "./providers/ollama-provider.js";
 import { ExecutionService } from "./services/execution-service.js";
+import { ArchitectureAnalyzer } from "./services/architecture-analyzer.js";
 import { ArchitectureOrchestrator } from "./services/architecture-orchestrator.js";
 
 const mockSelection: ProviderSelection = { provider: "mock", model: "deterministic-local" };
@@ -41,6 +42,7 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
   void app.register(cors, { origin: true });
   const executionService = new ExecutionService(repository, provider);
   const architectureOrchestrator = new ArchitectureOrchestrator();
+  const architectureAnalyzer = new ArchitectureAnalyzer(architectureOrchestrator.registry);
 
   app.setErrorHandler((error, _request, reply) => {
     app.log.error(error);
@@ -68,11 +70,42 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
     return ollama.catalog(configured);
   });
 
+  app.post("/api/architecture-discovery", async (request, reply) => {
+    const parsed = discoveryInputSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid discovery brief", issues: parsed.error.flatten() });
+    const selection = parsed.data.analysis ?? selectionFromLegacy(parsed.data.provider, provider, "analysis");
+    if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
+    if (selection.provider === "ollama") {
+      const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
+      const inventory = await ollama.listModels();
+      if (!selection.model || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) {
+        return reply.code(400).send({ error: "Unavailable provider model", message: "The selected analysis model is not available in the current local catalog." });
+      }
+    }
+    try {
+      const selectedProvider = providerForSelection(selection, "analysis", provider);
+      const result = await architectureAnalyzer.analyze(parsed.data.brief, selectedProvider);
+      // Discovery review is an expected consultative result, not a failed HTTP request.
+      // Final synthesis keeps the 422 gate when authorization cannot pass.
+      if (result.status === "review-required") return reply.code(200).send({ ...result, availableGenerators: architectureOrchestrator.registry.listCapabilities() });
+      return reply.code(200).send(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to analyze architecture direction";
+      return reply.code(503).send({ error: "Architecture discovery failed", message });
+    }
+  });
+
   app.post("/api/blueprint-proposals", async (request, reply) => {
     const parsed = briefInputSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid brief", issues: parsed.error.flatten() });
-    const preparation = architectureOrchestrator.prepare(parsed.data.brief);
-    if (preparation.status !== "ready") return reply.code(422).send({ status: "review-required", classification: preparation.classification, constraints: preparation.constraints, reasons: preparation.reasons, questions: preparation.questions, availableGenerators: architectureOrchestrator.registry.listCapabilities() });
+    let discovery;
+    if (parsed.data.discovery !== undefined) {
+      const discoveryResult = discoveryResultSchema.safeParse(parsed.data.discovery);
+      if (!discoveryResult.success) return reply.code(400).send({ error: "Invalid discovery handoff", issues: discoveryResult.error.flatten() });
+      discovery = discoveryResult.data;
+    }
+    const preparation = architectureOrchestrator.prepare(parsed.data.brief, parsed.data.generatorId, discovery);
+    if (preparation.status !== "ready") return reply.code(422).send({ status: "review-required", classification: preparation.classification, constraints: preparation.constraints, reasons: preparation.reasons, questions: preparation.questions, registryValidation: preparation.registryValidation, availableGenerators: architectureOrchestrator.registry.listCapabilities() });
     const selection = parsed.data.analysis ?? selectionFromLegacy(parsed.data.provider, provider, "analysis");
     const selectedProvider = providerForSelection(selection, "analysis", provider);
     if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
@@ -84,10 +117,10 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
       }
     }
     try {
-      const synthesisRequest = architectureOrchestrator.buildSynthesisRequest(parsed.data.brief, preparation);
-      const result = await selectedProvider.generateBlueprint(synthesisRequest);
-      const packet = architectureOrchestrator.createPacket(preparation.generator, parsed.data.brief, result.proposal.blueprint, preparation.classification);
-      const validation = validationReportSchema.parse(architectureOrchestrator.validatePacket(preparation.generator, packet));
+      const result = await selectedProvider.generateBlueprint(architectureOrchestrator.buildAuthorizedProviderRequest(preparation));
+      const handoff = { registryVersion: preparation.authorization.registryVersion, discoveryUsed: preparation.authorization.discoveryUsed, selectedFromDiscovery: discovery?.likelyStackOptions.some((option) => option.stackId === preparation.generator.stackId) ? preparation.generator.stackId : null, confirmedByUser: true };
+      const packet = architectureOrchestrator.createPacket(preparation.generator, parsed.data.brief, result.proposal.blueprint, preparation.classification, handoff, preparation.authorization);
+      const validation = validationReportSchema.parse(architectureOrchestrator.validateAuthorizedPacket(preparation, packet));
       if (validation.status !== "passed") return reply.code(422).send({ status: "validation-failed", classification: preparation.classification, validation });
       const proposal = blueprintProposalSchema.parse({
         ...result.proposal,
@@ -95,7 +128,10 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
         provider: result.metadata,
         classification: preparation.classification,
         architecturePacket: packet,
-        validation
+        packet,
+        validation,
+        status: "validated",
+        provenance: { ...handoff, ...preparation.authorization }
       });
       return reply.code(201).send(proposal);
     } catch (error) {

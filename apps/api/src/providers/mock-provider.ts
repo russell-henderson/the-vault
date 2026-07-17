@@ -1,4 +1,5 @@
-import type { AiGenerateRequest, AiGenerateResult, AiProvider, BlueprintGenerateRequest, BlueprintGenerateResult } from "./types.js";
+import type { AuthorizedSynthesisContext, ArchitectureSynthesisContext } from "@the-vault/shared";
+import type { AiGenerateRequest, AiGenerateResult, AiProvider, BlueprintGenerateRequest, BlueprintGenerateResult, DiscoveryGenerateRequest, DiscoveryGenerateResult } from "./types.js";
 
 function slug(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "synthesized-feature";
@@ -6,6 +7,21 @@ function slug(value: string): string {
 
 function extensionFor(language: string): string {
   return language.toLowerCase() === "swift" ? "swift" : language.toLowerCase() === "python" ? "py" : "tsx";
+}
+
+function contextFromAuthorization(authorization: AuthorizedSynthesisContext): ArchitectureSynthesisContext {
+  if (authorization.policyHash !== authorization.generatorPolicy.policyHash || authorization.provenance.policyHash !== authorization.policyHash || authorization.provenance.validationStatus !== "passed") throw new Error("Authorized synthesis context failed provenance validation");
+  return {
+    stackId: authorization.generatorPolicy.id,
+    domainProfile: authorization.generatorPolicy.id === "swift-spritekit" ? "mobile-physics" : authorization.generatorPolicy.id === "python-flet" ? "desktop-ui" : "web-dashboard",
+    platform: authorization.generatorPolicy.implementation.platform as "mobile" | "desktop" | "web",
+    language: authorization.generatorPolicy.implementation.language,
+    frameworkOptions: authorization.generatorPolicy.implementation.frameworks,
+    requiredComponentKinds: authorization.generatorPolicy.implementation.capabilities,
+    architecturalTraits: authorization.generatorPolicy.implementation.capabilityFingerprint,
+    constraints: authorization.generatorPolicy.constraints.requires,
+    prohibitedSubstitutions: authorization.generatorPolicy.constraints.conflicts
+  };
 }
 
 export class MockAiProvider implements AiProvider {
@@ -27,15 +43,37 @@ export class MockAiProvider implements AiProvider {
     yield result.output;
   }
 
+  async generateDiscovery(request: DiscoveryGenerateRequest): Promise<DiscoveryGenerateResult> {
+    const started = Date.now();
+    const options = request.registrySlice.slice(0, 3).map((option, index) => ({
+      stackId: option.stackId,
+      reason: `${option.language} with ${option.frameworkOptions.join(" / ")} fits the ${option.domainProfile} domain and its stated intent signals.`,
+      confidence: Math.max(0.55, 0.9 - index * 0.08)
+    }));
+    const top = request.registrySlice[0];
+    return {
+      result: {
+        domain: top?.domainProfile ?? null,
+        likelyStackOptions: options,
+        recommendedStackId: top?.stackId ?? null,
+        missingInfo: [],
+        clarifyingQuestions: []
+      },
+      metadata: { name: this.name, model: "deterministic-local", fallback: this.explicitFallback, message: "Deterministic registry discovery", durationMs: Date.now() - started }
+    };
+  }
+
   async generateBlueprint(request: BlueprintGenerateRequest): Promise<BlueprintGenerateResult> {
-    if (!request.generatorId || !request.synthesisContext || request.synthesisContext.stackId !== request.generatorId) throw new Error("Generator selection is mandatory before mock synthesis");
-    const context = request.synthesisContext;
-    const targetPath = `generated/${slug(request.brief)}.${extensionFor(context.language)}`;
+    const brief = request.confirmedBrief ?? request.brief;
+    const context = request.authorizedContext ? contextFromAuthorization(request.authorizedContext) : request.synthesisContext;
+    const generatorId = request.authorizedContext?.generatorPolicy.id ?? request.generatorId;
+    if (!brief || !generatorId || !context || context.stackId !== generatorId) throw new Error("Generator selection is mandatory before mock synthesis");
+    const targetPath = `generated/${slug(brief)}.${extensionFor(context.language)}`;
     const framework = context.frameworkOptions[0] ?? context.stackId;
     const message = this.explicitFallback ? "Generated from the explicit mock fallback after registry routing" : "Generated from the configured deterministic provider after registry routing";
     const blueprint = {
       name: `Synthesized ${context.domainProfile} feature`,
-      description: request.brief.trim(),
+      description: brief.trim(),
       targetPath,
       language: context.language,
       framework,
@@ -45,7 +83,7 @@ export class MockAiProvider implements AiProvider {
       layoutDesign: `Synthesize the ${context.platform} presentation from the brief; do not import a web layout unless the classified domain requires it.`,
       constraints: context.constraints,
       source: "mock" as const,
-      sourceBrief: request.brief.trim()
+      sourceBrief: brief.trim()
     };
     const proposal = {
       blueprint,

@@ -1,4 +1,4 @@
-import { architecturePacketSchema, architectureSynthesisContextSchema, type ArchitecturePacket, type ArchitectureSynthesisContext, type BlueprintInput, type Classification, type ClassificationEvidence, type ValidationReport } from "@the-vault/shared";
+import { architecturePacketSchema, architectureSynthesisContextSchema, discoveryRegistryOptionSchema, generatorPolicySchema, registryValidationResultSchema, type ArchitecturePacket, type ArchitectureSynthesisContext, type BlueprintInput, type Classification, type ClassificationEvidence, type DiscoveryRegistryOption, type ExplicitConstraints, type GeneratorPolicy, type RegistryValidationRequest, type RegistryValidationResult, type ValidationReport } from "@the-vault/shared";
 
 export type GeneratorId = "swift-spritekit" | "python-flet" | "react-typescript";
 export type DomainProfile = "mobile-physics" | "desktop-ui" | "web-dashboard";
@@ -13,6 +13,19 @@ export type ConstraintHints = {
   stackMentions: string[];
   prohibitions: string[];
   unrecognizedMentions: string[];
+  versions?: Array<{ technology: string; version: string }>;
+  unresolvedMentions?: string[];
+};
+
+export type GeneratorDiscoveryOption = DiscoveryRegistryOption;
+export type RegistryFilters = {
+  generatorIds?: string[];
+  platform?: string;
+  language?: string;
+  framework?: string;
+  requiredCapabilities?: string[];
+  lifecycleStatuses?: Array<GeneratorPolicy["lifecycle"]["status"]>;
+  explicitConstraints?: ExplicitConstraints;
 };
 
 export type GeneratorCapability = {
@@ -26,7 +39,13 @@ export type GeneratorCapability = {
   synthesisContext: ArchitectureSynthesisContext;
 };
 
+export type RegistryDiscoveryCandidate = {
+  option: DiscoveryRegistryOption;
+  evidence: ClassificationEvidence;
+};
+
 export type GeneratorDefinition = GeneratorCapability & {
+  policy: GeneratorPolicy;
   version: string;
   signalRules: SignalRule[];
   conflictRules: ConflictRule[];
@@ -69,7 +88,7 @@ function ruleMatches(tokens: string[], rule: SignalRule | ConflictRule): boolean
   return rule.phrases.some((phrase) => phraseMatches(tokens, phrase));
 }
 
-function contextFor(config: Omit<GeneratorDefinition, "classify" | "buildInstruction" | "createPacket" | "validateClassification" | "validateConstraints" | "validatePacket" | "synthesisContext">): ArchitectureSynthesisContext {
+function contextFor(config: Omit<GeneratorDefinition, "classify" | "buildInstruction" | "createPacket" | "validateClassification" | "validateConstraints" | "validatePacket" | "synthesisContext" | "policy">): ArchitectureSynthesisContext {
   return architectureSynthesisContextSchema.parse({
     stackId: config.stackId,
     domainProfile: config.domainProfile,
@@ -81,6 +100,26 @@ function contextFor(config: Omit<GeneratorDefinition, "classify" | "buildInstruc
     constraints: config.constraints,
     prohibitedSubstitutions: config.prohibitedSubstitutions
   });
+}
+
+function policyFor(config: Omit<GeneratorDefinition, "classify" | "buildInstruction" | "createPacket" | "validateClassification" | "validateConstraints" | "validatePacket" | "synthesisContext" | "policy">): GeneratorPolicy {
+  const base = {
+    id: config.stackId,
+    name: config.stackId,
+    implementation: {
+      platform: config.platform,
+      language: config.language,
+      frameworks: config.frameworkOptions,
+      capabilities: config.requiredComponentKinds,
+      capabilityFingerprint: [...config.supportedIntentSignals, ...config.requiredComponentKinds].sort()
+    },
+    versions: { generator: config.version, supported: [config.version], default: config.version },
+    templates: [{ id: `${config.stackId}-default`, supportedVersions: [config.version], status: "supported" as const }],
+    constraints: { requires: config.constraints, conflicts: config.prohibitedSubstitutions },
+    lifecycle: { status: "supported" as const },
+    metadata: { owner: "vault-architecture", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-07-17T00:00:00.000Z" }
+  };
+  return generatorPolicySchema.parse({ ...base, policyHash: hashText(JSON.stringify(base)) });
 }
 
 function evidenceFor(config: GeneratorDefinition, brief: string, constraints?: ConstraintHints): ClassificationEvidence {
@@ -175,10 +214,12 @@ function validatePacketFor(config: GeneratorDefinition, packet: ArchitecturePack
   return { status: errors.length > 0 ? "failed" : "passed", errors, warnings: [] };
 }
 
-function definition(config: Omit<GeneratorDefinition, "classify" | "buildInstruction" | "createPacket" | "validateClassification" | "validateConstraints" | "validatePacket" | "synthesisContext">): GeneratorDefinition {
+function definition(config: Omit<GeneratorDefinition, "classify" | "buildInstruction" | "createPacket" | "validateClassification" | "validateConstraints" | "validatePacket" | "synthesisContext" | "policy">): GeneratorDefinition {
   const synthesisContext = contextFor(config);
+  const policy = policyFor(config);
   return {
     ...config,
+    policy,
     synthesisContext,
     classify: (brief, constraints) => evidenceFor({ ...config, synthesisContext } as GeneratorDefinition, brief, constraints),
     buildInstruction: () => [
@@ -202,6 +243,24 @@ function definition(config: Omit<GeneratorDefinition, "classify" | "buildInstruc
   };
 }
 
+function discoveryOption(generator: GeneratorDefinition): DiscoveryRegistryOption {
+  return discoveryRegistryOptionSchema.parse({
+    stackId: generator.stackId,
+    domainProfile: generator.domainProfile,
+    platform: generator.platform,
+    language: generator.language,
+    frameworkOptions: generator.frameworkOptions,
+    supportedIntentSignals: generator.supportedIntentSignals,
+    architecturalTraits: generator.architecturalTraits,
+    requiredComponentKinds: generator.requiredComponentKinds,
+    constraints: generator.constraints,
+    prohibitedSubstitutions: generator.prohibitedSubstitutions,
+    version: generator.version,
+    policyHash: generator.policy.policyHash,
+    lifecycleStatus: generator.policy.lifecycle.status
+  });
+}
+
 export function createGeneratorRegistry(): GeneratorRegistry {
   return new GeneratorRegistry([
     definition({ id: "swift-spritekit", stackId: "swift-spritekit", domainProfile: "mobile-physics", platform: "mobile", version: "2.0.0", requiredComponentKinds: ["PhysicsController", "SceneLayer", "EntityNode", "InputController", "PersistenceManager"], supportedIntentSignals: ["swift", "spritekit", "ios", "mobile", "physics", "collision", "sprite", "game loop"], architecturalTraits: ["scene graph", "physics loop", "touch input"], language: "Swift", frameworkOptions: ["SpriteKit"], constraints: ["Keep physics state inside the scene boundary.", "Keep entity lifecycle and collision rules explicit."], prohibitedSubstitutions: ["SwiftUI without SpriteKit intent", "React", "Flet"], signalRules: [{ id: "swift", phrases: ["swift"], weight: 2, category: "language" }, { id: "spritekit", phrases: ["spritekit"], weight: 8, category: "framework" }, { id: "ios", phrases: ["ios", "iphone", "ipad"], weight: 3, category: "platform" }, { id: "mobile", phrases: ["mobile", "mobile app"], weight: 2, category: "platform" }, { id: "physics", phrases: ["physics", "physics simulation"], weight: 4, category: "domain" }, { id: "collision", phrases: ["collision", "collision handling"], weight: 3, category: "domain" }, { id: "sprite", phrases: ["sprite", "sprites"], weight: 2, category: "domain" }, { id: "game-loop", phrases: ["game loop", "game-loop", "update loop"], weight: 3, category: "domain" }], conflictRules: [{ id: "swiftui-conflict", phrases: ["swiftui", "swift ui"], reason: "SwiftUI intent is distinct from SpriteKit and no SwiftUI generator is registered." }, { id: "web-conflict", phrases: ["react", "tailwind", "browser", "web dashboard"], reason: "Web UI signals conflict with the mobile physics generator." }] }),
@@ -215,8 +274,79 @@ export class GeneratorRegistry {
 
   constructor(definitions: GeneratorDefinition[] = []) { for (const generator of definitions) this.register(generator); }
   register(generator: GeneratorDefinition): void { if (this.definitions.has(generator.stackId)) throw new Error(`Generator already registered: ${generator.stackId}`); this.definitions.set(generator.stackId, generator); }
-  listCapabilities(): GeneratorCapability[] { return [...this.definitions.values()].map(({ version: _version, signalRules: _signals, conflictRules: _conflicts, classify: _classify, buildInstruction: _build, createPacket: _packet, validateClassification: _classification, validateConstraints: _constraints, validatePacket: _validate, ...capability }) => capability); }
-  get(stackId: string): GeneratorDefinition | undefined { return this.definitions.get(stackId); }
+  listCapabilities(): GeneratorCapability[] { return [...this.definitions.values()].map(({ version: _version, policy: _policy, signalRules: _signals, conflictRules: _conflicts, classify: _classify, buildInstruction: _build, createPacket: _packet, validateClassification: _classification, validateConstraints: _constraints, validatePacket: _validate, ...capability }) => capability); }
+  getGenerator(id: string): GeneratorDefinition | undefined { return this.definitions.get(id); }
+  get(stackId: string): GeneratorDefinition | undefined { return this.getGenerator(stackId); }
+  isSupported(id: string): boolean {
+    const generator = this.getGenerator(id);
+    return Boolean(generator && ["supported", "experimental"].includes(generator.policy.lifecycle.status) && generator.policy.templates.some((template) => template.status === "supported" || template.status === "experimental"));
+  }
+  registryVersion(): string { return "registry-v3-authority"; }
+
+  validateRequest(request: RegistryValidationRequest): RegistryValidationResult {
+    const generator = this.getGenerator(request.generatorId);
+    const registryVersion = this.registryVersion();
+    const policyHash = generator?.policy.policyHash ?? "unknown-policy";
+    const violations: RegistryValidationResult["violations"] = [];
+    const error = (code: string, message: string) => violations.push({ code, message, severity: "error" as const });
+    if (!generator) {
+      error("unknown-generator", `Generator ${request.generatorId} is not registered.`);
+      return registryValidationResultSchema.parse({ status: "review-required", generatorId: request.generatorId, registryVersion, policyHash, authorizedPolicy: null, violations });
+    }
+    const policy = generator.policy;
+    if (request.registryVersion && request.registryVersion !== registryVersion) error("registry-version-mismatch", `Request pins ${request.registryVersion}, but the active registry is ${registryVersion}.`);
+    if (request.policyHash && request.policyHash !== policy.policyHash) error("policy-hash-mismatch", `Request policy hash does not match the registered ${request.generatorId} policy.`);
+    if (policy.lifecycle.status === "disabled") error("disabled-generator", `Generator ${request.generatorId} is disabled.`);
+    if (policy.lifecycle.status === "deprecated" && request.allowDeprecated !== true) error("deprecated-generator", `Generator ${request.generatorId} requires an explicit trusted deprecated override.`);
+    const requestedVersion = request.requestedVersion ?? policy.versions.default ?? policy.versions.generator;
+    if (!policy.versions.supported.includes(requestedVersion)) error("unsupported-version", `Generator version ${requestedVersion} is not supported for ${request.generatorId}.`);
+    const template = request.templateId ? policy.templates.find((candidate) => candidate.id === request.templateId) : policy.templates.find((candidate) => candidate.status === "supported");
+    if (request.templateId && !template) error("unknown-template", `Template ${request.templateId} is not registered for ${request.generatorId}.`);
+    if (!request.templateId && !template) error("no-authorized-template", `Generator ${request.generatorId} has no supported template.`);
+    if (template && template.status === "disabled") error("disabled-template", `Template ${template.id} is disabled.`);
+    if (template && template.status === "deprecated" && request.allowDeprecated !== true) error("deprecated-template", `Template ${template.id} requires an explicit trusted deprecated override.`);
+    if (template && !template.supportedVersions.includes(requestedVersion)) error("template-version-mismatch", `Template ${template.id} does not support generator version ${requestedVersion}.`);
+    if (request.platform && !valueMatches(policy.implementation.platform, request.platform)) error("platform-incompatible", `Requested platform ${request.platform} is incompatible with ${policy.implementation.platform}.`);
+    if (request.language && !valueMatches(policy.implementation.language, request.language)) error("language-incompatible", `Requested language ${request.language} is incompatible with ${policy.implementation.language}.`);
+    if (request.framework && !policy.implementation.frameworks.some((framework) => valueMatches(framework, request.framework ?? ""))) error("framework-incompatible", `Requested framework ${request.framework} is not supported by ${request.generatorId}.`);
+    const capabilities = new Set([...policy.implementation.capabilities, ...policy.implementation.capabilityFingerprint]);
+    for (const capability of request.requiredCapabilities ?? []) if (![...capabilities].some((candidate) => valueMatches(candidate, capability))) error("capability-incompatible", `Required capability ${capability} is not supported by ${request.generatorId}.`);
+    const explicit = request.explicitConstraints;
+    if (explicit.unresolvedMentions.length > 0) for (const mention of explicit.unresolvedMentions) error("unsupported-discovery", `Unresolved technology ${mention} cannot authorize synthesis.`);
+    if (explicit.platforms.length > 0 && !explicit.platforms.every((platform) => valueMatches(policy.implementation.platform, platform))) error("constraint-platform-conflict", `Explicit platform constraints ${explicit.platforms.join(", ")} do not match ${request.generatorId}.`);
+    if (explicit.languages.length > 0 && !explicit.languages.every((language) => valueMatches(policy.implementation.language, language))) error("constraint-language-conflict", `Explicit language constraints ${explicit.languages.join(", ")} do not match ${request.generatorId}.`);
+    if (explicit.frameworks.length > 0 && !explicit.frameworks.every((framework) => policy.implementation.frameworks.some((candidate) => valueMatches(candidate, framework)))) error("constraint-framework-conflict", `Explicit framework constraints ${explicit.frameworks.join(", ")} do not match ${request.generatorId}.`);
+    for (const version of explicit.versions) {
+      const technologyMatches = [policy.id, policy.implementation.language, ...policy.implementation.frameworks].some((candidate) => valueMatches(candidate, version.technology));
+      if (technologyMatches && !policy.versions.supported.includes(version.version)) error("constraint-version-conflict", `Explicit ${version.technology} version ${version.version} is not supported by ${request.generatorId}.`);
+    }
+    const prohibited = [policy.id, policy.implementation.platform, policy.implementation.language, ...policy.implementation.frameworks, ...policy.constraints.requires];
+    for (const prohibition of explicit.prohibitions) if (prohibited.some((candidate) => valueMatches(candidate, prohibition))) error("constraint-prohibition-conflict", `The brief prohibits ${prohibition}, which conflicts with ${request.generatorId}.`);
+    return registryValidationResultSchema.parse({ status: violations.some((violation) => violation.severity === "error") ? "review-required" : "passed", generatorId: request.generatorId, registryVersion, policyHash: policy.policyHash, authorizedPolicy: violations.length === 0 ? policy : null, violations });
+  }
+
+  getAuthorizedOptions(filters: RegistryFilters = {}): GeneratorDiscoveryOption[] {
+    return [...this.definitions.values()]
+      .filter((generator) => this.isSupported(generator.stackId))
+      .filter((generator) => !filters.generatorIds || filters.generatorIds.includes(generator.stackId))
+      .filter((generator) => !filters.platform || valueMatches(generator.policy.implementation.platform, filters.platform))
+      .filter((generator) => !filters.language || valueMatches(generator.policy.implementation.language, filters.language))
+      .filter((generator) => !filters.framework || generator.policy.implementation.frameworks.some((framework) => valueMatches(framework, filters.framework ?? "")))
+      .filter((generator) => !filters.lifecycleStatuses || filters.lifecycleStatuses.includes(generator.policy.lifecycle.status))
+      .filter((generator) => !filters.requiredCapabilities || filters.requiredCapabilities.every((required) => generator.policy.implementation.capabilities.includes(required)))
+      .filter((generator) => !filters.explicitConstraints || this.validateRequest({ generatorId: generator.stackId, explicitConstraints: filters.explicitConstraints, registryVersion: this.registryVersion(), policyHash: generator.policy.policyHash }).status === "passed")
+      .map(discoveryOption);
+  }
+  discoveryCandidates(brief: string, constraints?: ConstraintHints): RegistryDiscoveryCandidate[] {
+    const allGenerators = [...this.definitions.values()];
+    const compatible = constraints && constraints.unrecognizedMentions.length > 0
+      ? []
+      : constraints ? allGenerators.filter((generator) => generator.validateConstraints(constraints).status === "passed") : allGenerators;
+    return compatible
+      .map((generator) => ({ option: discoveryOption(generator), evidence: generator.classify(brief, constraints) }))
+      .sort((left, right) => right.evidence.confidence - left.evidence.confidence || right.evidence.semanticIntegrity - left.evidence.semanticIntegrity);
+  }
+  discoverySlice(brief: string, constraints?: ConstraintHints, limit = 3): RegistryDiscoveryCandidate[] { return this.discoveryCandidates(brief, constraints).slice(0, limit); }
   classify(brief: string, constraints?: ConstraintHints): Classification {
     const allGenerators = [...this.definitions.values()];
     const compatibleGenerators = constraints && constraints.unrecognizedMentions.length > 0

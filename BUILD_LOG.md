@@ -126,6 +126,34 @@
 - **Compatibility:** The orchestrator flow and intentional structured manual blueprint endpoint remain unchanged.
 - **Verification:** `npm test` passed with 14 test files and 53 tests. `npm run typecheck`, `npm run build`, and `git diff --check` passed.
 
+## 2026-07-17 — Stage 6 consultative architecture workflow
+
+- **Origin and decision:** Implemented the approved two-stage workflow from `docs/agents.md`: discovery and recommendation are separate from confirmed final synthesis. Discovery remains ephemeral; only the confirmed handoff and successful packet provenance are retained.
+- **Features implemented:** Added shared discovery contracts, `ArchitectureAnalyzer`, compact registry discovery slices, `POST /api/architecture-discovery`, provider-specific discovery generation for Ollama and Mock, explicit `generatorId` final handoff validation, re-extraction of refined constraints, selected-generator provenance, and staged BriefComposer UI controls for analyze/select/confirm/synthesize.
+- **Integrity behavior:** Analyzer responses cannot contain packets. Unknown generator ids from a discovery provider are rejected. Final synthesis does not call a provider without a confirmed registered generator. Existing manual structured blueprint creation, provider hot-swapping, packet validation, exports, and no-fallback behavior remain intact.
+- **Regression correction:** Expanded ordinary-language ignore terms in the constraint extractor so vague discovery briefs are not incorrectly treated as unsupported technology requests.
+- **Verification:** `npm test` passed with 15 test files and 60 tests. `npm run typecheck`, `npm run build`, `npm run seed:demo`, and `git diff --check` passed.
+
 ## Log format for future entries
+
+## 2026-07-17 — Stage 6 authority-boundary migration
+
+- **Origin and decision:** Implemented the approved authority-boundary migration and ADR-001. Enrichment is discovery-only, the GeneratorRegistry is the policy engine, and the ArchitectureOrchestrator is the sole synthesis authorization path.
+- **Features implemented:** Added shared policy, validation, enrichment, authorized-context, and provenance contracts; policy hashes and lifecycle/version/template/capability/constraint validation; Mock and Ollama enrichment adapters; visible unsupported discovery; provider isolation; and final packet authorization checks.
+- **Integrity behavior:** Unknown, unsupported, disabled, deprecated-without-override, conflicting, version-drifted, or hash-drifted requests stop at `review-required` before provider access, packet creation, or persistence. No fallback stack or React/Tailwind substitution was introduced. Manual structured blueprint creation remains functional.
+- **Verification:** 64 tests passed; `npm run typecheck`, `npm run build`, `npm run seed:demo`, and `git diff --check` passed. Diff check emitted only existing LF/CRLF conversion warnings.
+
+## 2026-07-17 — Discovery and actions API coverage
+
+- **Coverage:** Added a deterministic end-to-end contract test for CORS preflight, provider status/catalog, discovery success/review/validation, proposal authorization, manual blueprint creation, prompt generation/retrieval, execution, verification, persistence, and not-found paths.
+- **Correction:** Tightened cloud-model detection for Ollama names with suffix forms such as `:120b-cloud`.
+- **Evidence:** See [`docs/reports/discovery-actions-api-report.md`](docs/reports/discovery-actions-api-report.md).
+- **Verification:** Full suite passed with 17 test files and 67 tests; typecheck, build, seed, and diff checks passed.
+
+## 2026-07-17 — Entire workflow timing trace
+
+- **Trace:** Started the complete in-process workflow from CORS preflight through discovery, review, proposal authorization, manual persistence, prompt generation, execution, retrieval, and verification.
+- **Evidence:** [`docs/reports/entire-workflow-report.md`](docs/reports/entire-workflow-report.md) records all 23 requests, response summaries, HTTP statuses, and per-handler durations.
+- **Result:** PASS; 23 requests completed with a summed handler duration of 134.76 ms in the recorded run. The repeatable runner is [`scripts/run-entire-workflow-report.ts`](scripts/run-entire-workflow-report.ts).
 
 For each meaningful milestone, record the date, model used, repository state, major decisions, implemented features, human decisions, AI contributions, verification results, and any follow-up risks or approvals required.

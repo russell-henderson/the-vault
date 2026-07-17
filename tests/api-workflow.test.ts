@@ -8,6 +8,38 @@ const blueprint = {
 };
 
 describe("blueprint API workflow", () => {
+  it("keeps discovery separate from final packet synthesis", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+    const response = await app.inject({ method: "POST", url: "/api/architecture-discovery", payload: { brief: "Build a dashboard for internal analytics.", provider: "mock" } });
+    expect(response.statusCode).toBe(200);
+    const result = response.json<{ status: string; likelyStackOptions: unknown[]; architecturePacket?: unknown; blueprint?: unknown }>();
+    expect(result.status).toBe("discovery");
+    expect(result.likelyStackOptions.length).toBeGreaterThan(0);
+    expect(result.architecturePacket).toBeUndefined();
+    expect(result.blueprint).toBeUndefined();
+    await app.close();
+  });
+
+  it("returns discovery review as a handled state instead of an HTTP error", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+    const response = await app.inject({ method: "POST", url: "/api/architecture-discovery", payload: { brief: "Build a Vue TypeScript web dashboard.", provider: "mock" } });
+    expect(response.statusCode).toBe(200);
+    expect(response.json<{ status: string; unsupportedDiscoveries: Array<{ technology: string }> }>().status).toBe("review-required");
+    expect(response.json<{ unsupportedDiscoveries: Array<{ technology: string }> }>().unsupportedDiscoveries.map((discovery) => discovery.technology)).toContain("vue");
+    await app.close();
+  });
+
+  it("requires a confirmed generator before final synthesis", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+    const response = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build a React TypeScript web dashboard.", provider: "mock" } });
+    expect(response.statusCode).toBe(422);
+    expect(response.json<{ status: string; reasons: string[] }>().reasons.join(" ")).toContain("confirmed generatorId");
+    await app.close();
+  });
+
   it("creates, generates, and retrieves the prompt and execution history", async () => {
     const repository = new VaultRepository(":memory:");
     const app = buildApp(repository);
@@ -47,7 +79,11 @@ describe("blueprint API workflow", () => {
     expect(status.statusCode).toBe(200);
     expect(status.json<{ configured: { name: string }; available: boolean }>().configured.name).toBe("mock");
 
-    const proposal = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build an accessible analytics panel.", provider: "mock" } });
+    const discovery = await app.inject({ method: "POST", url: "/api/architecture-discovery", payload: { brief: "Build an accessible analytics panel.", provider: "mock" } });
+    expect(discovery.statusCode).toBe(200);
+    const direction = discovery.json<{ recommendedStackId: string; status: string }>();
+    expect(direction.status).toBe("discovery");
+    const proposal = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build an accessible analytics panel.", generatorId: direction.recommendedStackId, discovery: discovery.json(), provider: "mock" } });
     expect(proposal.statusCode).toBe(201);
     const result = proposal.json<{ blueprint: { source?: string; implementationPlan?: unknown }; plan: { filesToTouch: string[] }; provider: { name: string; fallback?: boolean } }>();
     expect(result.blueprint.source).toBe("mock");
@@ -60,7 +96,9 @@ describe("blueprint API workflow", () => {
   it("routes domain-aware proposals through the registry and preserves the packet", async () => {
     const repository = new VaultRepository(":memory:");
     const app = buildApp(repository);
-    const proposal = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build a Swift SpriteKit mobile physics game with collision handling.", analysis: { provider: "mock", model: "deterministic-local" } } });
+    const discovery = await app.inject({ method: "POST", url: "/api/architecture-discovery", payload: { brief: "Build a Swift SpriteKit mobile physics game with collision handling.", analysis: { provider: "mock", model: "deterministic-local" } } });
+    expect(discovery.statusCode).toBe(200);
+    const proposal = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build a Swift SpriteKit mobile physics game with collision handling.", generatorId: "swift-spritekit", discovery: discovery.json(), analysis: { provider: "mock", model: "deterministic-local" } } });
     expect(proposal.statusCode).toBe(201);
     const result = proposal.json<{ classification: { evidence: { recommendedStackId: string } }; architecturePacket: { stack: { id: string }; components: Array<{ kind: string }> }; blueprint: { architecturePacket?: { stack: { id: string } } } }>();
     expect(result.classification.evidence.recommendedStackId).toBe("swift-spritekit");

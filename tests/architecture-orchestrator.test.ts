@@ -5,7 +5,7 @@ describe("architecture constraint gate", () => {
   const orchestrator = new ArchitectureOrchestrator();
 
   it("routes a supported non-web brief to its native generator", () => {
-    const preparation = orchestrator.prepare("Build a Swift SpriteKit iOS physics game with collision handling. No web.");
+    const preparation = orchestrator.prepareConfirmed("Build a Swift SpriteKit iOS physics game with collision handling. No web.", "swift-spritekit");
 
     expect(preparation.status).toBe("ready");
     if (preparation.status !== "ready") throw new Error("Expected a ready preparation");
@@ -17,7 +17,7 @@ describe("architecture constraint gate", () => {
   });
 
   it("does not substitute SpriteKit or React for an unsupported SwiftUI request", () => {
-    const preparation = orchestrator.prepare("Build a SwiftUI iOS settings application. No web.");
+    const preparation = orchestrator.prepareConfirmed("Build a SwiftUI iOS settings application. No web.", "swift-spritekit");
 
     expect(preparation.status).toBe("review-required");
     if (preparation.status !== "review-required") throw new Error("Expected review-required preparation");
@@ -27,7 +27,7 @@ describe("architecture constraint gate", () => {
   });
 
   it("rejects conflicting mobile and web constraints instead of guessing", () => {
-    const preparation = orchestrator.prepare("Build a Swift SpriteKit iOS game and a React web dashboard.");
+    const preparation = orchestrator.prepareConfirmed("Build a Swift SpriteKit iOS game and a React web dashboard.", "swift-spritekit");
 
     expect(preparation.status).toBe("review-required");
     if (preparation.status !== "review-required") throw new Error("Expected review-required preparation");
@@ -36,11 +36,19 @@ describe("architecture constraint gate", () => {
   });
 
   it("requires review for an unsupported explicit web framework", () => {
-    const preparation = orchestrator.prepare("Build a Vue TypeScript web dashboard.");
+    const preparation = orchestrator.prepareConfirmed("Build a Vue TypeScript web dashboard.", "react-typescript");
 
     expect(preparation.status).toBe("review-required");
     if (preparation.status !== "review-required") throw new Error("Expected review-required preparation");
     expect(preparation.constraints.unrecognizedMentions).toContain("vue");
     expect(preparation.reasons.join(" ")).toContain("Unrecognized technology mentions");
+  });
+
+  it("requires an explicit generator before final synthesis", () => {
+    const preparation = orchestrator.prepare("Build a React TypeScript web dashboard.");
+
+    expect(preparation.status).toBe("review-required");
+    if (preparation.status !== "review-required") throw new Error("Expected review-required preparation");
+    expect(preparation.reasons.join(" ")).toContain("confirmed generatorId");
   });
 });

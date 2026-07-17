@@ -40,6 +40,12 @@ button:disabled { cursor: wait; opacity: .65; }
 .provider-select { display: flex; flex-direction: column; gap: .35rem; color: #64748b; font-size: .66rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .provider-select select { border: 1px solid rgba(148,163,184,.16); border-radius: .6rem; background: #111b2d; padding: .65rem .75rem; color: #cbd5e1; font-size: .75rem; letter-spacing: normal; text-transform: none; outline: none; }
 .provider-role-control { min-width: min(100%, 20rem); flex: 1; }
+.stack-option { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .8rem; border: 1px solid rgba(148,163,184,.14); border-radius: .7rem; background: rgba(2,6,23,.32); padding: .7rem .8rem; text-align: left; color: #cbd5e1; }
+.stack-option:hover, .stack-option-selected { border-color: rgba(34,211,238,.55); background: rgba(34,211,238,.08); }
+.stack-option > span { display: flex; min-width: 0; flex-direction: column; gap: .2rem; }
+.stack-option strong { color: #e0f2fe; font-family: ui-monospace, monospace; font-size: .72rem; }
+.stack-option span span { overflow: hidden; color: #94a3b8; font-size: .7rem; line-height: 1.4; text-overflow: ellipsis; }
+.stack-option small { flex: none; color: #67e8f9; font-family: ui-monospace, monospace; font-size: .68rem; }
 .refresh-button { white-space: nowrap; font-size: .75rem; }
 .flow-list { margin-top: 1.5rem; }
 .flow-item { position: relative; display: flex; gap: .9rem; padding: 1rem 0; }

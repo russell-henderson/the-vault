@@ -4,9 +4,11 @@ export type ConstraintExtraction = {
   platforms: ConstraintPlatform[];
   languages: string[];
   frameworks: string[];
+  versions: Array<{ technology: string; version: string }>;
   stackMentions: string[];
   prohibitions: string[];
   unrecognizedMentions: string[];
+  unresolvedMentions: string[];
   tokens: string[];
 };
 
@@ -33,7 +35,7 @@ const vocabulary: VocabularyEntry[] = [
 ];
 
 const ignoredTechnologyWords = new Set([
-  "a", "an", "and", "app", "application", "accessible", "ai", "analytics", "api", "avoid", "browser", "build", "can", "cannot", "collision", "controller", "create", "custom", "dashboard", "data", "desktop", "do", "does", "exclude", "excluding", "feature", "for", "form", "forms", "game", "handling", "in", "input", "ios", "keyboard", "local", "loop", "mobile", "must", "navigation", "native", "never", "no", "not", "of", "or", "panel", "persistence", "physics", "project", "responsive", "scene", "settings", "sprite", "state", "the", "to", "ui", "use", "using", "web", "window", "windowed", "with", "without", "write"
+  "a", "an", "and", "app", "application", "accessible", "ai", "analytics", "api", "avoid", "browser", "build", "can", "cannot", "collision", "controller", "create", "custom", "dashboard", "data", "desktop", "do", "does", "exclude", "excluding", "feature", "for", "form", "forms", "game", "handling", "helps", "habit", "habits", "in", "input", "ios", "keyboard", "local", "loop", "mobile", "must", "navigation", "native", "never", "no", "not", "of", "or", "panel", "people", "persistence", "physics", "project", "responsive", "scene", "settings", "sprite", "state", "that", "the", "to", "track", "ui", "use", "using", "web", "window", "windowed", "with", "without", "write"
 ].map((word) => word.trim()));
 const explicitTechnologyHints = new Set(["angular", "compose", "csharp", "dart", "dotnet", "electron", "flutter", "java", "kotlin", "next", "nextjs", "nuxt", "qt", "rust", "svelte", "vue"]);
 
@@ -115,6 +117,21 @@ function extractUnrecognizedMentions(brief: string): string[] {
   return mentions;
 }
 
+function extractVersions(tokens: string[]): Array<{ technology: string; version: string }> {
+  const versions: Array<{ technology: string; version: string }> = [];
+  for (const entry of vocabulary) {
+    for (const phrase of entry.phrases) {
+      for (const start of matchingStarts(tokens, phrase)) {
+        const next = tokens[start + tokenize(phrase).length];
+        const following = tokens[start + tokenize(phrase).length + 1];
+        const version = next === "version" || next === "v" ? following : next;
+        if (version && /^\d+(?:\.\d+)*(?:-[a-z0-9]+)?$/i.test(version)) versions.push({ technology: entry.id, version });
+      }
+    }
+  }
+  return orderedUnique(versions.map((entry) => JSON.stringify(entry))).map((entry) => JSON.parse(entry) as { technology: string; version: string });
+}
+
 /**
  * Extracts explicit architectural constraints without treating substrings as
  * evidence. For example, `Swift` matches the language token `swift`, but it
@@ -125,6 +142,7 @@ export function extractConstraints(brief: string): ConstraintExtraction {
   const positive = new Set<string>();
   const prohibited = new Set<string>();
   const unrecognizedMentions = extractUnrecognizedMentions(brief);
+  const versions = extractVersions(tokens);
 
   for (const entry of vocabulary) {
     for (const phrase of entry.phrases) {
@@ -139,9 +157,11 @@ export function extractConstraints(brief: string): ConstraintExtraction {
     platforms: orderedUnique([...positive].filter((id): id is ConstraintPlatform => ["mobile", "desktop", "web"].includes(id))),
     languages: orderedUnique([...positive].filter((id) => ["swift", "python", "typescript", "javascript"].includes(id))),
     frameworks: orderedUnique([...positive].filter((id) => ["spritekit", "swiftui", "flet", "react", "react-native", "tailwind"].includes(id))),
+    versions,
     stackMentions: orderedUnique([...positive, ...prohibited, ...unrecognizedMentions]),
     prohibitions: orderedUnique([...prohibited]),
     unrecognizedMentions,
+    unresolvedMentions: unrecognizedMentions,
     tokens
   };
 }

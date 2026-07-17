@@ -11,4 +11,11 @@ describe("web API client", () => {
     expect((options?.headers as Headers).get("content-type")).toBe("application/json");
     fetchMock.mockRestore();
   });
+
+  it("surfaces structured review reasons from proposal validation", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ status: "review-required", reasons: ["A confirmed generator is required."], questions: ["Which platform should this target?"] }), { status: 422, headers: { "content-type": "application/json" } }));
+    await expect(api.generateBlueprintProposal("Build an app", "swift-spritekit")).rejects.toMatchObject({ message: "A confirmed generator is required. Which platform should this target?", status: 422 });
+    expect(fetchMock).toHaveBeenCalled();
+    fetchMock.mockRestore();
+  });
 });

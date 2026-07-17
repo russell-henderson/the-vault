@@ -14,6 +14,10 @@ Architectural knowledge is often scattered across conversations, issue trackers,
 
 The workspace contains a TypeScript monorepo with React/Vite/Tailwind frontend, Fastify API, SQLite persistence, shared Zod schemas, deterministic prompt generation, Ollama/local-provider adapters, and focused tests. The architecture below describes the implemented local-first workflow and its bounded future expansion.
 
+## Stage 6 authority boundary
+
+The implemented authority sequence is `Discover → Evaluate → Authorize → Validate → Synthesize`. Enrichment is untrusted and ephemeral; `GeneratorRegistry` owns generator policy and authorization validation; `ArchitectureOrchestrator` is the only synthesis authorization path. Providers receive only an authorized context pinned to registry version, policy hash, generator version, template, and provenance. Review-required stops provider access and persistence. The manual structured blueprint endpoint remains a trusted-input exception.
+
 ## Phase 4 domain-aware orchestration
 
 The proposal path is now domain-first and registry-driven. `ArchitectureOrchestrator` calls the `GeneratorRegistry` to classify the brief, enforces the confidence threshold, semantic-integrity threshold, and alternative margin, resolves the recommended registered generator, and validates classification evidence against that generator before building provider instructions. The initial registry contains `swift-spritekit`, `python-flet`, and `react-typescript`.

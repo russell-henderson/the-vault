@@ -1,5 +1,9 @@
 # Vault Architect — End-to-End Workflow
 
+## Stage 6 authority sequence
+
+The brief now follows `Discover → Evaluate → Authorize → Validate → Synthesize`. Discovery suggestions are ephemeral and visibly distinguish unsupported technologies from authorized options. The registry validates the complete policy slice, and the orchestrator passes only the pinned authorized context to a provider. Any failed check is `review-required`; there is no fallback stack or React/Tailwind substitution. Manual structured blueprint creation remains a separate trusted-input path.
+
 This document describes the workflow currently implemented in the repository: what the user does in the UI, which React component handles it, which API route is called, what validation and orchestration occur, where data is stored, and what the user sees next.
 
 ## System at a glance
@@ -11,6 +15,7 @@ flowchart TD
     Dashboard[Dashboard<br/>blueprint list]
     New[BlueprintCreate]
     Brief[BriefComposer<br/>brief + analysis selection]
+    Discovery[Architecture discovery<br/>domain + registry options]
     Manual[BlueprintForm\nmanual fields]
     Proposal[BlueprintProposal\nreview packet]
     Detail[BlueprintDetail\nblueprint workspace]
@@ -22,7 +27,8 @@ flowchart TD
 
     Api[Fastify API<br/>apps/api/src/app.ts]
     Shared[Shared Zod contracts\npackages/shared]
-    Orchestrator[ArchitectureOrchestrator]
+    Analyzer[ArchitectureAnalyzer]
+    Orchestrator[ArchitectureOrchestrator<br/>confirmed handoff gate]
     Registry[GeneratorRegistry]
     Generator{Registered generator}
     Provider{Selected provider}
@@ -38,14 +44,17 @@ flowchart TD
     App --> New
     New --> Brief
     New --> Manual
-    Brief -->|POST /api/blueprint-proposals| Api
+    Brief -->|POST /api/architecture-discovery| Api
+    Api --> Analyzer
+    Analyzer -->|discovery or review-required| Brief
+    Brief -->|POST /api/blueprint-proposals + generatorId| Api
     Manual -->|POST /api/blueprints| Api
     Api --> Shared
     Api --> Orchestrator
     Orchestrator --> Extractor[ConstraintExtractor<br/>platform/language/framework/prohibition gate]
     Extractor --> Registry
     Registry --> Generator
-    Orchestrator -->|Review Required on unsupported, low-confidence, or incompatible intent| Brief
+    Orchestrator -->|Review Required on unsupported, low-confidence, or incompatible confirmed handoff| Brief
     Generator --> Provider
     Provider --> Ollama
     Provider --> Mock
@@ -115,11 +124,11 @@ flowchart LR
     Save --> Create
 ```
 
-### 3.1 Brief mode: analysis selection
+### 3.1 Brief mode: consultative discovery
 
 Component: `apps/web/src/components/BriefComposer.tsx`
 
-The user enters a natural-language brief and chooses an analysis provider/model through `ProviderRoleControl`.
+The user enters a natural-language idea and chooses an analysis provider/model through `ProviderRoleControl`. The first request is discovery only; it cannot produce an Architecture Packet.
 
 The UI prevents submission when:
 
@@ -127,18 +136,18 @@ The UI prevents submission when:
 - the selected Ollama model is absent from the current catalog;
 - the selected model is marked unavailable.
 
-The deterministic mock is an explicit selectable option. It does not bypass architecture classification.
+The deterministic mock is an explicit selectable option. It does not bypass registry discovery or final validation.
 
 Request:
 
 ```http
-POST /api/blueprint-proposals
+POST /api/architecture-discovery
 Content-Type: application/json
 ```
 
 ```json
 {
-  "brief": "Build a Swift SpriteKit mobile physics game with collision handling.",
+  "brief": "Build an app that helps people understand their daily habits.",
   "analysis": {
     "provider": "mock",
     "model": "deterministic-local"
@@ -146,9 +155,13 @@ Content-Type: application/json
 }
 ```
 
-## 4. Proposal API workflow
+The response contains the inferred domain, up to three registry-backed stack options, confidence, missing information, clarifying questions, extracted constraints, and classification evidence. It contains no blueprint or packet. The UI keeps this result in ephemeral state while the user refines the brief and confirms a `generatorId`.
 
-Route: `apps/api/src/app.ts` — `POST /api/blueprint-proposals`
+After confirmation, the UI sends the refined brief and selected generator to `POST /api/blueprint-proposals`. The final route will not synthesize when `generatorId` is absent.
+
+## 4. Discovery and proposal API workflow
+
+Routes: `apps/api/src/app.ts` — `POST /api/architecture-discovery` and `POST /api/blueprint-proposals`
 
 The server performs these steps in order:
 
@@ -157,35 +170,44 @@ sequenceDiagram
     participant UI as BriefComposer
     participant API as Fastify API
     participant Zod as Shared schemas
+    participant A as ArchitectureAnalyzer
     participant O as ArchitectureOrchestrator
     participant R as GeneratorRegistry
     participant P as Ollama or Mock
     participant V as Packet validator
 
-    UI->>API: POST brief + analysis selection
-    API->>Zod: Validate briefInputSchema
+    UI->>API: POST /api/architecture-discovery
+    API->>Zod: Validate discoveryInputSchema
     Zod-->>API: Valid brief
-    API->>O: prepare(brief)
-    O->>O: extractConstraints(brief)
-    O->>R: classify(brief, constraints)
-    R-->>O: Classification + evidence
+    API->>A: analyze(brief, analysis selection)
+    A->>A: extractConstraints(brief)
+    A->>R: discoverySlice(brief, constraints)
+    R-->>A: Compact registry options + evidence
+    A->>P: generateDiscovery(brief, compact registry slice)
+    P-->>A: Structured recommendations only
+    A-->>UI: discovery or review-required; no packet
+
+    UI->>API: POST /api/blueprint-proposals + refined brief + generatorId
+    API->>Zod: Validate confirmed handoff
+    API->>O: prepareConfirmed(brief, generatorId)
+    O->>O: re-extractConstraints(refined brief)
+    O->>R: resolve(generatorId) against full registry
+    R-->>O: GeneratorDefinition or review-required
     R->>R: Filter incompatible and unrecognized technology constraints
-    O->>R: get(recommendedStackId)
-    R-->>O: GeneratorDefinition
-    O->>O: Validate hard constraints, confidence, margin, domain, platform, stack
+    O->>O: Validate hard constraints, confidence, domain, platform, and stack
 
     alt Unsupported or unsafe classification
         O-->>API: review-required
         API-->>UI: HTTP 422 + constraints + reasons + questions
     else Compatible registered generator
         API->>API: Validate selected provider/model
-        API->>P: generateBlueprint(brief, synthesis instruction, domain constraints)
+        API->>P: generateBlueprint(brief, validated synthesis context)
         P-->>API: Blueprint proposal
         API->>O: createPacket(generator, blueprint, evidence)
         O-->>API: Architecture Packet V2
         API->>V: validatePacket(packet)
         V-->>API: Validation report
-        API-->>UI: HTTP 201 proposal + packet + classification
+        API-->>UI: HTTP 201 proposal + packet + provenance
     end
 ```
 
@@ -199,7 +221,7 @@ The registry is the sole routing authority. The current registered definitions a
 | `python-flet` | `desktop-ui` | Desktop | `ViewLayer`, `EventController`, `StateModel`, `ServiceAdapter`, `PersistenceManager` |
 | `react-typescript` | `web-dashboard` | Web | `ViewLayer`, `StateController`, `ApiAdapter`, `AccessibilityLayer`, `PersistenceManager` |
 
-The classifier ranks the registered generator definitions using exact token/phrase signals and conflict rules. The current safety rules are:
+The Analyzer ranks a compact compatible registry slice using exact token/phrase signals and conflict rules. The Orchestrator then resolves the user-confirmed generator against the full registry. The current final safety rules are:
 
 - confidence must be at least `0.78`;
 - semantic integrity must be at least `0.80`;
@@ -207,16 +229,19 @@ The classifier ranks the registered generator definitions using exact token/phra
 - the recommended stack must exist in the registry;
 - classification stack, domain, and platform must match the selected generator.
 
+Discovery may return low-confidence options and questions. Final synthesis may not proceed on low confidence or ambiguous semantic integrity. An Analyzer recommendation is never authoritative until the user confirms a generator id.
+
 Broad language terms and framework terms are matched as separate tokens. For example, `SwiftUI` does not match the `Swift` token, and it is an explicit conflict for the registered SpriteKit generator. There is no implicit React/Tailwind fallback.
 
 ### 4.2 Review Required path
 
-When classification is unsupported, too uncertain, or incompatible, the API returns HTTP `422`:
+When discovery has no registry-backed path, or final validation is unsupported, too uncertain, or incompatible, the API returns HTTP `422`:
 
 ```json
 {
   "status": "review-required",
   "classification": {},
+  "constraints": {},
   "reasons": ["Classification confidence is below the safety threshold."],
   "availableGenerators": []
 }
@@ -226,7 +251,7 @@ The UI displays the reasons and available registered generators, keeps the brief
 
 ### 4.3 Provider generation path
 
-Only after classification succeeds does the API validate the analysis selection against the current Ollama catalog. It then passes the validated brief, first-principles synthesis instruction, generator id, and domain constraint context to the selected provider. The registry contributes constraints and required components; it does not inject a complete stack template. Providers reject blueprint synthesis when the generator id and synthesis context are absent or inconsistent.
+Only after the user confirms a generator and the Orchestrator re-validates the refined brief does the API validate the analysis selection against the current Ollama catalog. It then passes the validated brief, first-principles synthesis instruction, generator id, and domain constraint context to the selected provider. The registry contributes constraints and required components; it does not inject a complete stack template. Providers reject blueprint synthesis when the generator id and synthesis context are absent or inconsistent. Discovery providers receive only a compact registry slice and cannot generate packets.
 
 - `OllamaAiProvider` sends the bounded brief and generator-specific instruction to Ollama.
 - `MockAiProvider` returns deterministic stack-specific proposal data for the registered generator.
@@ -464,11 +489,12 @@ erDiagram
 Use this order when tracing a problem:
 
 1. `apps/web/src/App.tsx` — route and workspace initialization.
-2. `apps/web/src/components/BriefComposer.tsx` — brief submission, analysis selection, and Review Required rendering.
+2. `apps/web/src/components/BriefComposer.tsx` — discovery submission, stack confirmation, analysis selection, and Review Required rendering.
 3. `apps/web/src/lib/api.ts` — request payloads and API error details.
-4. `apps/api/src/app.ts` — route parsing, provider validation, orchestration, packet creation, and response status.
-5. `apps/api/src/services/architecture-orchestrator.ts` — classification-to-generator gate.
-6. `packages/prompts/src/registry.ts` — registered generators, signal scoring, packet construction, and validation.
+4. `apps/api/src/app.ts` — discovery/final route parsing, provider validation, orchestration, packet creation, and response status.
+5. `apps/api/src/services/architecture-analyzer.ts` — ephemeral discovery, compact registry slice, and recommendation validation.
+6. `apps/api/src/services/architecture-orchestrator.ts` — confirmed-handoff validation gate.
+7. `packages/prompts/src/registry.ts` — registered generators, signal scoring, discovery slices, packet construction, and validation.
 7. `apps/api/src/providers/ollama-provider.ts` and `mock-provider.ts` — provider-specific normalization.
 8. `apps/api/src/repository.ts` — SQLite writes, migrations, and record mapping.
 9. `apps/api/src/services/execution-service.ts` — execution lifecycle transitions.

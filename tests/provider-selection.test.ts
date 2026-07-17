@@ -18,7 +18,9 @@ describe("provider catalog and role selection", () => {
     const catalogModels = catalog.json<{ models: Array<{ provider: string; model: string }> }>().models;
     expect(catalogModels).toEqual(expect.arrayContaining([expect.objectContaining({ provider: "mock", model: "deterministic-local" }), expect.objectContaining({ provider: "ollama", model: "llama3.2:3b" })]));
 
-    const proposal = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build a React TypeScript analytics dashboard panel", analysis: { provider: "mock", model: "deterministic-local" } } });
+    const discovery = await app.inject({ method: "POST", url: "/api/architecture-discovery", payload: { brief: "Build a React TypeScript analytics dashboard panel", analysis: { provider: "mock", model: "deterministic-local" } } });
+    expect(discovery.statusCode).toBe(200);
+    const proposal = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build a React TypeScript analytics dashboard panel", generatorId: "react-typescript", discovery: discovery.json(), analysis: { provider: "mock", model: "deterministic-local" } } });
     expect(proposal.statusCode).toBe(201);
     expect(proposal.json<{ provider: { name: string; model?: string } }>().provider).toMatchObject({ name: "mock", model: "deterministic-local" });
 
@@ -35,7 +37,7 @@ describe("provider catalog and role selection", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ models: [{ name: "llama3.2:3b" }] }), { status: 200 }));
     const repository = new VaultRepository(":memory:");
     const app = buildApp(repository, new MockAiProvider(false));
-    const response = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build a React TypeScript analytics dashboard panel", analysis: { provider: "ollama", model: "missing:latest" } } });
+    const response = await app.inject({ method: "POST", url: "/api/blueprint-proposals", payload: { brief: "Build a React TypeScript analytics dashboard panel", generatorId: "react-typescript", analysis: { provider: "ollama", model: "missing:latest" } } });
     expect(response.statusCode).toBe(400);
     await app.close();
     fetchMock.mockRestore();

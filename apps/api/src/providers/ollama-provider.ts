@@ -1,12 +1,12 @@
-import { blueprintProposalSchema, providerCatalogSchema, type ProviderCatalog, type ProviderModelOption, type ProviderSelection } from "@the-vault/shared";
-import type { AiGenerateRequest, AiGenerateResult, AiProvider, BlueprintGenerateRequest, BlueprintGenerateResult } from "./types.js";
+import { blueprintProposalSchema, discoveryModelResultSchema, providerCatalogSchema, type ArchitectureSynthesisContext, type AuthorizedSynthesisContext, type ProviderCatalog, type ProviderModelOption, type ProviderSelection } from "@the-vault/shared";
+import type { AiGenerateRequest, AiGenerateResult, AiProvider, BlueprintGenerateRequest, BlueprintGenerateResult, DiscoveryGenerateRequest, DiscoveryGenerateResult } from "./types.js";
 
 type OllamaResponse = { response?: string; error?: string };
 type OllamaTagsResponse = { models?: Array<{ name?: string }> };
-type StrictBlueprintGenerateRequest = BlueprintGenerateRequest & { generatorId: string; synthesisContext: NonNullable<BlueprintGenerateRequest["synthesisContext"]> };
+type StrictBlueprintGenerateRequest = BlueprintGenerateRequest & { brief: string; generatorId: string; synthesisContext: NonNullable<BlueprintGenerateRequest["synthesisContext"]> };
 
 export function isCloudModel(model: string): boolean {
-  return model.toLowerCase().split(":").includes("cloud");
+  return model.toLowerCase().split(":").some((segment) => segment === "cloud" || /(^|[-_])cloud($|[-_])/.test(segment));
 }
 
 export function localModelNames(models: string[]): string[] {
@@ -39,6 +39,19 @@ const blueprintResponseFormat = {
   }
 };
 
+const discoveryResponseFormat = {
+  type: "object",
+  additionalProperties: false,
+  required: ["domain", "likelyStackOptions", "recommendedStackId", "missingInfo", "clarifyingQuestions"],
+  properties: {
+    domain: { type: ["string", "null"] },
+    likelyStackOptions: { type: "array", maxItems: 3, items: { type: "object", additionalProperties: false, required: ["stackId", "reason", "confidence"], properties: { stackId: { type: "string" }, reason: { type: "string" }, confidence: { type: "number", minimum: 0, maximum: 1 } } } },
+    recommendedStackId: { type: ["string", "null"] },
+    missingInfo: { type: "array", items: { type: "string" } },
+    clarifyingQuestions: { type: "array", maxItems: 3, items: { type: "string" } }
+  }
+};
+
 function cleanJson(value: string): string {
   const trimmed = value.trim();
   if (trimmed.startsWith("```") && trimmed.endsWith("```")) return trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
@@ -57,10 +70,41 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()) : [];
 }
 
-function assertStrictBlueprintRequest(request: BlueprintGenerateRequest): asserts request is StrictBlueprintGenerateRequest {
-  if (!request.generatorId || !request.synthesisContext || request.synthesisContext.stackId !== request.generatorId) {
-    throw new Error("Generator selection is mandatory before Ollama synthesis");
+function contextFromAuthorization(authorization: AuthorizedSynthesisContext): ArchitectureSynthesisContext {
+  if (authorization.policyHash !== authorization.generatorPolicy.policyHash || authorization.provenance.policyHash !== authorization.policyHash || authorization.provenance.validationStatus !== "passed") throw new Error("Authorized synthesis context failed provenance validation");
+  return {
+    stackId: authorization.generatorPolicy.id,
+    domainProfile: authorization.generatorPolicy.id === "swift-spritekit" ? "mobile-physics" : authorization.generatorPolicy.id === "python-flet" ? "desktop-ui" : "web-dashboard",
+    platform: authorization.generatorPolicy.implementation.platform as "mobile" | "desktop" | "web",
+    language: authorization.generatorPolicy.implementation.language,
+    frameworkOptions: authorization.generatorPolicy.implementation.frameworks,
+    requiredComponentKinds: authorization.generatorPolicy.implementation.capabilities,
+    architecturalTraits: authorization.generatorPolicy.implementation.capabilityFingerprint,
+    constraints: authorization.generatorPolicy.constraints.requires,
+    prohibitedSubstitutions: authorization.generatorPolicy.constraints.conflicts
+  };
+}
+
+function strictBlueprintRequest(request: BlueprintGenerateRequest): StrictBlueprintGenerateRequest {
+  if (request.authorizedContext) {
+    const context = contextFromAuthorization(request.authorizedContext);
+    return { ...request, brief: request.authorizedContext.confirmedBrief, generatorId: request.authorizedContext.generatorPolicy.id, synthesisContext: context };
   }
+  if (!request.brief || !request.generatorId || !request.synthesisContext || request.synthesisContext.stackId !== request.generatorId) throw new Error("Generator selection is mandatory before Ollama synthesis");
+  return { ...request, brief: request.brief, generatorId: request.generatorId, synthesisContext: request.synthesisContext };
+}
+
+function discoveryInstruction(request: DiscoveryGenerateRequest): string {
+  const registry = request.registrySlice.map((option) => `${option.stackId}: ${option.domainProfile}, ${option.platform}, ${option.language}, ${option.frameworkOptions.join("/")}`).join(" | ");
+  return [
+    "You are the Vault Discovery Analyzer. Return JSON only.",
+    "Analyze the idea for discovery; never generate a blueprint, packet, code, folder structure, or implementation plan.",
+    "Recommend only stack IDs present in the supplied registry slice. Do not invent or substitute a stack.",
+    `Registry slice: ${registry || "none"}.`,
+    `Extracted hard constraints: ${JSON.stringify(request.constraints)}.`,
+    "If the idea is vague but compatible, return discovery questions. If no supplied stack fits, return an empty option list.",
+    "Return exactly the requested discovery JSON shape."
+  ].join(" ");
 }
 
 function synthesisInstruction(request: StrictBlueprintGenerateRequest): string {
@@ -149,14 +193,25 @@ export class OllamaAiProvider implements AiProvider {
     return { artifactType: "ollama-response", artifactLocation: `ollama://${this.creationModel}/executions/${request.executionId}`, output: response.response ?? "", metadata: { name: this.name, model: this.creationModel, durationMs: Date.now() - started } };
   }
 
-  async generateBlueprint(request: BlueprintGenerateRequest): Promise<BlueprintGenerateResult> {
-    assertStrictBlueprintRequest(request);
+  async generateDiscovery(request: DiscoveryGenerateRequest): Promise<DiscoveryGenerateResult> {
     const started = Date.now();
-    const response = await this.request({ model: this.analysisModel, system: request.instruction ?? synthesisInstruction(request), prompt: request.brief, stream: false, format: blueprintResponseFormat });
+    const response = await this.request({ model: this.analysisModel, system: discoveryInstruction(request), prompt: request.brief, stream: false, format: discoveryResponseFormat });
+    let parsed: unknown;
+    try { parsed = JSON.parse(cleanJson(response.response ?? "")); } catch { throw new Error("Ollama returned invalid JSON for architecture discovery"); }
+    const result = discoveryModelResultSchema.safeParse(parsed);
+    if (!result.success) throw new Error(`Ollama discovery validation failed: ${result.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
+    const metadata = { name: this.name, model: this.analysisModel, durationMs: Date.now() - started } as const;
+    return { result: result.data, metadata };
+  }
+
+  async generateBlueprint(request: BlueprintGenerateRequest): Promise<BlueprintGenerateResult> {
+    const strictRequest = strictBlueprintRequest(request);
+    const started = Date.now();
+    const response = await this.request({ model: this.analysisModel, system: strictRequest.instruction ?? synthesisInstruction(strictRequest), prompt: strictRequest.brief, stream: false, format: blueprintResponseFormat });
     let parsed: unknown;
     try { parsed = JSON.parse(cleanJson(response.response ?? "")); } catch { throw new Error("Ollama returned invalid JSON for the blueprint proposal"); }
     const metadata = { name: this.name, model: this.analysisModel, durationMs: Date.now() - started } as const;
-    const proposal = blueprintProposalSchema.omit({ provider: true }).safeParse(normalizeProposal(parsed, request.brief, request));
+    const proposal = blueprintProposalSchema.omit({ provider: true }).safeParse(normalizeProposal(parsed, strictRequest.brief, strictRequest));
     if (!proposal.success) throw new Error(`Ollama blueprint validation failed: ${proposal.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
     return { proposal: { ...proposal.data, provider: metadata }, metadata };
   }
