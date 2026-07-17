@@ -20,12 +20,14 @@ The `AiProvider` interface currently exposes:
 
 Configuration is environment-based:
 
-- `AI_PROVIDER=ollama` selects Ollama for configured-provider requests.
+- `AI_PROVIDER=ollama` sets Ollama as the configured-provider default; an explicit role selection can choose Ollama independently when its catalog is available.
 - `OLLAMA_BASE_URL` defaults to `http://localhost:11434`.
 - `OLLAMA_ANALYSIS_MODEL` defaults to `llama3.2:3b` and handles structured brief analysis and blueprint proposals.
 - `OLLAMA_CREATION_MODEL` defaults to `dolphin3:8b` and handles implementation/creation artifacts.
 - `OLLAMA_MODEL` remains supported as a legacy single-model override for both roles.
-- `provider=mock` on `POST /api/blueprint-proposals` explicitly selects the deterministic fallback.
+- `provider=mock` on proposal or execution requests remains supported for compatibility; role-specific `analysis` and `creation` selections are the preferred form.
+
+Both proposal and execution requests also accept a role-specific selection, for example `{ "analysis": { "provider": "ollama", "model": "llama3.2:3b" } }` or `{ "creation": { "provider": "mock", "model": "deterministic-local" } }`. Selections are validated against the current catalog and are recorded in normalized provider/model metadata.
 
 ## Execution lifecycle
 
@@ -50,8 +52,9 @@ The execution record stores the exact input prompt, normalized generated output,
 The current API surface is:
 
 - `GET /api/providers/status` — report configured provider, model, and local availability.
-- `POST /api/blueprint-proposals` — turn a natural-language brief into a validated blueprint and implementation packet.
-- `POST /api/executions` — execute a stored prompt artifact through the configured provider.
+- `GET /api/providers/models` — return the refreshed local Ollama catalog, configured analysis/creation defaults, availability, and the always-selectable deterministic mock option. Cloud-tagged models are excluded.
+- `POST /api/blueprint-proposals` — turn a natural-language brief into a validated blueprint and implementation packet, optionally using `analysis: { provider, model }`.
+- `POST /api/executions` — execute a stored prompt artifact, optionally using `creation: { provider, model }`.
 - `GET /api/executions/:id` — return status, prompt, output, artifact metadata, and evidence.
 - `POST /api/executions/:id/verify` — append or replace the current verification note.
 

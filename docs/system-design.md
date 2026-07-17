@@ -13,12 +13,12 @@
 - **Frontend:** React, TypeScript, Vite, Tailwind CSS, and a small component library or accessible primitives.
 - **Backend:** Node.js with TypeScript and Fastify. Use a single language across the product to maximize Build Week velocity and share domain types.
 - **Validation:** Zod schemas shared between API boundaries and the frontend.
-- **Persistence:** SQLite initially, accessed through Drizzle ORM or a thin typed repository layer. Keep migrations explicit.
+- **Persistence:** SQLite accessed through the current thin typed repository layer. Keep migrations explicit and additive.
 - **AI:** An internal provider-neutral `AiProvider` interface with Ollama and deterministic mock adapters. The adapter receives a bounded brief or prompt and returns normalized, schema-validated results.
 - **Testing:** Vitest for unit and integration tests, plus one browser-level end-to-end path with a lightweight test runner once the UI exists.
 - **Deployment:** One Node service serving the built frontend and API, with a local SQLite file and environment-based secrets.
 
-This stack is recommended over FastAPI for the MVP because it keeps the frontend, backend, schemas, tests, and orchestration logic in TypeScript. FastAPI remains a reasonable future choice if Python-based evaluation or agent tooling becomes a primary requirement.
+This stack keeps the frontend, backend, schemas, tests, and orchestration logic in TypeScript. FastAPI remains a possible future choice if Python-based evaluation or agent tooling becomes a primary requirement.
 
 ## Frontend architecture
 
@@ -56,7 +56,7 @@ server/
 
 The route layer should be thin. Domain services own status transitions and invariants. Repositories own persistence. Providers should not know about HTTP or UI concerns.
 
-For the demo, the AI provider can support two modes: a deterministic mock that makes local development and tests reliable, and an OpenAI-backed mode enabled by an environment variable. Both modes must return the same normalized result shape.
+The implemented provider boundary supports two modes: Ollama for local analysis/creation and a deterministic mock that makes offline development, tests, and explicit fallback behavior reliable. Both modes return the same normalized result shape.
 
 ## Database schema concept
 
@@ -96,25 +96,28 @@ The API should be small and task-oriented:
 | --- | --- | --- |
 | `POST` | `/api/blueprints` | Create a blueprint draft |
 | `GET` | `/api/blueprints` | List blueprint summaries |
-| `GET` | `/api/blueprints/:id` | Retrieve blueprint and revisions |
-| `POST` | `/api/blueprints/:id/revisions` | Submit a validated blueprint revision |
-| `POST` | `/api/revisions/:id/prompt` | Generate and store a Codex-ready prompt |
-| `POST` | `/api/revisions/:id/executions` | Create an execution record after approval |
-| `POST` | `/api/executions/:id/run` | Run the configured AI adapter |
+| `GET` | `/api/blueprints/:id` | Retrieve a blueprint and its stored packet metadata |
+| `GET` | `/api/providers/status` | Report configured provider health and role defaults |
+| `GET` | `/api/providers/models` | Return the current local catalog and deterministic mock option |
+| `POST` | `/api/blueprint-proposals` | Generate a validated proposal with an optional analysis selection |
+| `POST` | `/api/blueprints/:id/generate-prompt` | Compile a stored blueprint into a prompt artifact |
+| `POST` | `/api/executions` | Run a prompt with an optional creation selection |
 | `GET` | `/api/executions/:id` | Retrieve prompt, output, artifact, and evidence |
-| `POST` | `/api/executions/:id/verification` | Add verification or human review notes |
+| `POST` | `/api/executions/:id/verify` | Add verification or human review notes |
 
-Every write response should return the record ID, status, revision, and enough metadata for the UI to update without guessing. API errors should distinguish invalid input, invalid state transition, provider failure, and persistence failure.
+Every write response should return the record ID, status, and enough metadata for the UI to update without guessing. API errors should distinguish invalid input, invalid state transition, provider failure, and persistence failure.
 
 ## Data flow
 
 ```text
 Blueprint form
   → API validation
-  → blueprint revision
+  → validated blueprint
+  → optional analysis provider/model selection
   → prompt generator
   → stored Codex prompt
   → user approval
+  → optional creation provider/model selection
   → execution record
   → AI provider adapter
   → normalized AI contribution/artifact
@@ -138,7 +141,9 @@ AiOrchestrator.run(contextPackage) → AiRunResult
 
 The adapter must not receive unrestricted workspace access by default. It must not silently expand scope, treat generated output as approved, or write secrets into the execution record. Provider-specific request formats, retries, health checks, and authentication remain inside `providers/`. Ollama blueprint proposals are parsed as JSON and validated against shared schemas before approval or persistence.
 
-For the hackathon, the first integration can return a generated implementation artifact and file manifest for review. Direct code mutation can be demonstrated through a controlled Codex workflow only after the approval boundary and result capture are working.
+Provider selection is validated at the API boundary against the current Ollama catalog for each proposal or execution. `GET /api/providers/models` is manually refreshed by the UI; it filters cloud-tagged entries, always includes the deterministic mock option, and does not persist user selections. A refresh replaces catalog data while the UI preserves valid choices and marks removed choices unavailable.
+
+The current integration returns a generated implementation artifact and file metadata for review. It does not mutate the repository directly; any future code mutation must remain behind explicit approval, scope restrictions, and verification.
 
 ## Key invariants
 

@@ -53,7 +53,7 @@ OLLAMA_CREATION_MODEL=dolphin3:8b
 npm run dev:api
 ```
 
-The dashboard shows both configured model roles. `llama3.2:3b` handles fast structured analysis and blueprint proposals; `dolphin3:8b` handles creation/execution artifacts. If Ollama is unavailable, choose **Deterministic mock fallback** in the brief composer. The fallback is surfaced in the proposal and execution metadata; it is never presented as an Ollama response.
+The dashboard shows both configured model roles and refreshes the live local catalog on startup. Use **Refresh catalog** after pulling a new model; cloud-tagged models remain hidden. `llama3.2:3b` handles fast structured analysis and blueprint proposals; `dolphin3:8b` handles creation/execution artifacts. If Ollama is unavailable, choose **Deterministic mock** in either role. The fallback is surfaced in the proposal and execution metadata; it is never presented as an Ollama response.
 
 ## Current workflow
 
@@ -92,10 +92,10 @@ For a presentation-ready local demo, run `npm run seed:demo` once after installa
 ## Three-minute demo workflow
 
 1. Open the dashboard and select **Start with a brief**.
-2. Submit the seeded analytics-panel brief using Ollama or the explicit mock fallback.
+2. Refresh the catalog if needed, choose an analysis model, and submit the seeded analytics-panel brief using Ollama or the deterministic mock.
 3. Review the generated blueprint, files-to-touch, constraints, and acceptance checks.
 4. Select **Approve & save blueprint**.
-5. Select **Compile prompt**, then **Launch execution**.
+5. Select **Compile prompt**, choose a creation model, then select **Launch execution**.
 6. Review provider metadata, the generated packet, and the stage rail.
 7. Add a verification note documenting what was checked.
 
@@ -123,11 +123,35 @@ curl -X POST http://localhost:3001/api/blueprint-proposals \
   -d '{"brief":"Build an accessible analytics dashboard panel with loading, error, empty, and ready states.","provider":"configured"}'
 ```
 
+Choose a specific analysis model:
+
+```bash
+curl -X POST http://localhost:3001/api/blueprint-proposals \
+  -H "content-type: application/json" \
+  -d '{"brief":"Build an accessible analytics dashboard panel.","analysis":{"provider":"ollama","model":"llama3.2:3b"}}'
+```
+
+Choose a specific creation model:
+
+```bash
+curl -X POST http://localhost:3001/api/executions \
+  -H "content-type: application/json" \
+  -d '{"promptArtifactId":"<PROMPT_ARTIFACT_ID>","creation":{"provider":"mock","model":"deterministic-local"}}'
+```
+
 Check local provider health:
 
 ```bash
 curl http://localhost:3001/api/providers/status
 ```
+
+List selectable local models:
+
+```bash
+curl http://localhost:3001/api/providers/models
+```
+
+Analysis and creation model choices are per operation and are not persisted to blueprints. The API validates each Ollama selection against the current local catalog, so removed or cloud-tagged models cannot run silently.
 
 ## Workspace layout
 

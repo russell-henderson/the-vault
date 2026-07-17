@@ -12,6 +12,16 @@ The MVP should demonstrate a complete, narrow workflow:
 - Record the implementation result, changed files, and verification evidence.
 - Present the full trace from intent to result in a simple interface.
 
+## Current implementation status
+
+The approved TypeScript monorepo is implemented with React/Vite/Tailwind, Fastify, SQLite, shared Zod schemas, deterministic prompt generation, Ollama and mock provider adapters, packet export, and focused Vitest coverage. The current demo path is:
+
+```text
+Brief → analysis provider/model selection → validated proposal → human approval → prompt → creation provider/model selection → execution → verification/export
+```
+
+Provider selections are ephemeral and per operation. The live Ollama catalog is manually refreshed, cloud-tagged models are hidden, and the deterministic mock remains selectable when Ollama is unavailable.
+
 Out of scope for the first demo: multi-tenant collaboration, production-grade permissions, autonomous unreviewed merges, broad IDE support, complex graph analytics, and a large plugin marketplace.
 
 ## Development phases
@@ -56,6 +66,14 @@ Out of scope for the first demo: multi-tenant collaboration, production-grade pe
 - Add concise README, screenshots or recording, and known limitations.
 - Freeze scope and focus on reliability, latency, and clarity.
 
+### Implemented local-provider milestone
+
+- Add Ollama health and model catalog discovery.
+- Support independent analysis and creation model selection.
+- Validate selections server-side and preserve provider/model metadata.
+- Add accessible catalog refresh and unavailable-model states.
+- Preserve deterministic mock execution and Phase 1 packet export behavior.
+
 ## Priority order
 
 1. End-to-end traceability from blueprint to verified change.
@@ -88,6 +106,6 @@ Out of scope for the first demo: multi-tenant collaboration, production-grade pe
 
 For the MVP, prefer a single deployable service with file or embedded-database persistence and environment-based configuration. Keep secrets out of artifacts and logs. Provide a local development command and a simple hosted demo path. Before production use, add authentication, authorization, encrypted storage, rate limiting, provider isolation, audit retention, and secure sandboxing for code execution.
 
-## Initial technology recommendation for approval
+## Approved and implemented technology
 
-Because the repository has no pre-existing stack, use a minimal TypeScript full-stack application with a lightweight web UI, a small server/API layer, schema validation, and file-backed or embedded persistence. This keeps the project approachable for Build Week while leaving the Codex adapter and storage layer replaceable. The exact framework and hosting target should be approved before implementation begins.
+The repository uses a minimal TypeScript full-stack application with a React/Vite web UI, Fastify API, shared Zod validation, SQLite persistence, and replaceable provider adapters. The implementation keeps provider-specific request formats behind the API/provider boundary and leaves future remote providers, sandboxed code mutation, and team collaboration outside the MVP.

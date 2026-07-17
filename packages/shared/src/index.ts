@@ -10,6 +10,26 @@ export const providerMetadataSchema = z.object({
   durationMs: z.number().int().nonnegative().optional()
 });
 
+export const providerKindSchema = z.enum(["ollama", "mock"]);
+export const providerSelectionSchema = z.object({
+  provider: providerKindSchema,
+  model: z.string().trim().max(160).optional()
+});
+export const providerModelOptionSchema = z.object({
+  provider: providerKindSchema,
+  model: nonEmpty.max(160),
+  label: nonEmpty.max(240),
+  available: z.boolean(),
+  cloud: z.boolean()
+});
+export const providerCatalogSchema = z.object({
+  configured: z.object({ analysis: providerSelectionSchema, creation: providerSelectionSchema }),
+  models: z.array(providerModelOptionSchema),
+  ollamaAvailable: z.boolean(),
+  detail: z.string(),
+  refreshedAt: z.string().datetime()
+});
+
 export const implementationPlanSchema = z.object({
   summary: nonEmpty.max(2000),
   steps: z.array(nonEmpty.max(1000)).max(20),
@@ -67,8 +87,8 @@ export const executionRecordSchema = z.object({
 });
 
 export const verificationInputSchema = z.object({ verificationNotes: nonEmpty.max(4000) });
-export const executionCreateSchema = z.object({ promptArtifactId: nonEmpty, provider: z.enum(["configured", "mock"]).default("configured") });
-export const briefInputSchema = z.object({ brief: nonEmpty.max(8000), provider: z.enum(["configured", "mock"]).default("configured") });
+export const executionCreateSchema = z.object({ promptArtifactId: nonEmpty, provider: z.enum(["configured", "mock"]).default("configured"), creation: providerSelectionSchema.optional() });
+export const briefInputSchema = z.object({ brief: nonEmpty.max(8000), provider: z.enum(["configured", "mock"]).default("configured"), analysis: providerSelectionSchema.optional() });
 export const blueprintProposalSchema = z.object({
   blueprint: blueprintInputSchema,
   plan: implementationPlanSchema,
@@ -80,7 +100,9 @@ export const providerStatusSchema = z.object({
   available: z.boolean(),
   detail: z.string(),
   fallbackAvailable: z.boolean(),
-  models: z.object({ analysis: nonEmpty, creation: nonEmpty }).optional()
+  models: z.object({ analysis: nonEmpty, creation: nonEmpty }).optional(),
+  ollamaAvailable: z.boolean().optional(),
+  catalogRefreshedAt: z.string().datetime().optional()
 });
 
 export type BlueprintInput = z.infer<typeof blueprintInputSchema>;
@@ -89,6 +111,10 @@ export type ImplementationPlan = z.infer<typeof implementationPlanSchema>;
 export type BlueprintProposal = z.infer<typeof blueprintProposalSchema>;
 export type BriefInput = z.infer<typeof briefInputSchema>;
 export type ProviderMetadata = z.infer<typeof providerMetadataSchema>;
+export type ProviderKind = z.infer<typeof providerKindSchema>;
+export type ProviderSelection = z.infer<typeof providerSelectionSchema>;
+export type ProviderModelOption = z.infer<typeof providerModelOptionSchema>;
+export type ProviderCatalog = z.infer<typeof providerCatalogSchema>;
 export type ProviderStatus = z.infer<typeof providerStatusSchema>;
 export type PromptArtifact = z.infer<typeof promptArtifactSchema>;
 export type ExecutionRecord = z.infer<typeof executionRecordSchema>;

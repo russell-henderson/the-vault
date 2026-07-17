@@ -111,15 +111,21 @@ AI capabilities are abstracted behind a provider interface.
 
 Current implementation:
 
-- Mock AI provider
+- Ollama local provider
+- Live local model catalog with cloud filtering
+- Independent analysis and creation model selection
+- Deterministic mock provider fallback
 - Execution lifecycle
 - Evidence capture
 
 Future support:
 
 - OpenAI Codex
-- Local models
 - Additional AI providers
+
+## Current demo path
+
+The demo loads provider health and the live catalog, lets the user refresh after pulling a model, selects an analysis model for proposal generation, requires human approval, compiles the prompt, selects a creation model for execution, and records provider/model metadata with the result. The user can copy Markdown artifacts or export the full trace as JSON. Cloud-tagged models are hidden by default; the deterministic mock remains available without Ollama.
 
 ---
 

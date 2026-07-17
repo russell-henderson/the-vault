@@ -71,6 +71,31 @@
 - **Verification results:** Confirmed local Ollama inventory includes `llama3.2:3b` and `dolphin3:8b`. Live smoke test passed provider health, blueprint proposal generation with `llama3.2:3b`, blueprint persistence, prompt compilation, and completed execution with `dolphin3:8b` using an in-memory database. The small analysis model omitted some optional structure, so the adapter now inserts visible review warnings and the final proposal still passes schema validation.
 - **Final checks:** `npm test` passed with 8 test files and 16 tests. `npm run typecheck`, `npm run build`, and `npm run seed:demo` passed.
 
+## 2026-07-16 — Prompt compilation request hardening
+
+- **Bug fixed:** The web client was sending `content-type: application/json` on the prompt-compilation POST without a body, causing Fastify to reject the request.
+- **Implementation:** Prompt compilation now sends a serialized `{ blueprintId }` body. The API client only sets JSON content type when a body exists, parses non-JSON error responses safely, and normalizes network failures. Blueprint detail now shows action-specific error states and a retry action.
+- **Verification results:** `npm test` passed: 9 test files and 17 tests. `npm run typecheck` and `npm run build` passed.
+
+## 2026-07-16 — Phase 1 Markdown and packet export
+
+- **Features implemented:** Added Markdown copy actions to prompt and execution artifacts, including Clipboard API fallback and inline success/failure feedback. Added full-trace JSON packet export with blueprint, prompt artifact, all executions, selected execution details, verification evidence, schema version, timestamp, and sanitized filename.
+- **Scope:** Phase 2 provider hot-swapping, Phase 3 telemetry, Phase 4 verification-state changes, and Phase 5 glassmorphism were intentionally left unchanged.
+- **Verification results:** `npm test` passed: 10 test files and 19 tests. `npm run typecheck` passed. `npm run build` passed for shared, prompts, API, and web packages.
+
+## 2026-07-16 — Phase 2 provider catalog refresh and hot-swapping
+
+- **Major decisions:** Keep provider choices ephemeral and per operation. Preserve legacy configured/mock request fields while adding shared analysis and creation selections. Filter `:cloud` models from the selectable catalog and retain the deterministic mock option.
+- **Features implemented:** Added shared provider selection/catalog schemas, `GET /api/providers/models`, live Ollama tag listing and filtering, current-catalog server validation, role-specific proposal/execution selection, accessible model selects, refresh controls with loading/feedback states, unavailable-selection visibility, and catalog-aware provider status.
+- **Documentation:** Updated README, Codex integration notes, and demo script with catalog refresh, model selection, and validation behavior.
+- **Verification results:** Added catalog filtering, mock inclusion, selected metadata, unknown-model rejection, and accessible control rendering tests. `npm test` passed with 11 files and 23 tests; `npm run typecheck`, `npm run build`, and `npm run seed:demo` passed. The restricted runner could not start `ollama list`, so live Ollama smoke verification remains environment-dependent.
+- **Follow-up risks:** Ollama availability and model inventory remain environment-dependent; the UI keeps the mock option usable when a catalog refresh fails.
+
+## 2026-07-16 — Documentation alignment after Phase 2
+
+- **Documentation:** Audited and updated README, MVP definition, development plan, architecture, system design, architecture diagram, demo story, demo script, Codex integration notes, and submission notes to describe the live Ollama catalog, independent analysis/creation selections, manual refresh behavior, cloud filtering, deterministic mock fallback, provider validation, packet export, and current API routes.
+- **Verification:** Searched all Markdown documentation for stale pre-Phase-2 provider and API references; historical build-log entries remain unchanged as milestone records.
+
 ## Log format for future entries
 
 For each meaningful milestone, record the date, model used, repository state, major decisions, implemented features, human decisions, AI contributions, verification results, and any follow-up risks or approvals required.

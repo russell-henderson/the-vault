@@ -4,7 +4,7 @@
 
 Human architectural decisions are often lost between a design conversation and an implementation task. A coding agent can produce useful code quickly, but without structured context it may miss constraints, invent requirements, or make results difficult to review. The Vault Architect creates a durable handoff between architectural thinking and Codex execution.
 
-The MVP proves that one structured component blueprint can become a validated, Codex-ready implementation prompt, an execution record, a generated artifact, and a reviewable verification trail.
+The MVP proves that one structured component blueprint can become a validated, Codex-ready implementation prompt, one or more provider-selected execution records, generated artifacts, a packet export, and a reviewable verification trail.
 
 ## Target user
 
@@ -15,33 +15,33 @@ The MVP is optimized for one user working in one project workspace. It is not a 
 ## Core workflow
 
 1. **Define:** The user creates a component blueprint containing architecture, technology requirements, dependencies, state/data requirements, UI requirements, and constraints.
-2. **Validate:** The system checks required fields, normalizes metadata, assigns an identifier and revision, and reports missing or contradictory information.
-3. **Prepare:** The system generates a Codex-ready implementation prompt with the blueprint, explicit scope, assumptions, acceptance criteria, and verification instructions.
-4. **Record:** The system creates an execution record linking the blueprint revision to the generated prompt and a pending AI run.
-5. **Collaborate:** Codex receives the optimized prompt and returns implementation output or a structured request for clarification. The system records the AI contribution and generated artifact relationship.
-6. **Review:** The user compares the original specification, generated prompt, artifact, and verification notes in one traceable review view.
+2. **Validate:** The system checks required fields, normalizes metadata, assigns an identifier, and reports missing or contradictory information.
+3. **Analyze:** The user selects an available analysis provider/model from the live local catalog, or the deterministic mock, to propose a structured blueprint packet.
+4. **Prepare:** The system generates a Codex-ready implementation prompt with the approved blueprint, explicit scope, assumptions, acceptance criteria, and verification instructions.
+5. **Create:** The user selects an independent creation provider/model. The API validates the selection against the current catalog, runs the provider, and records normalized provider/model metadata.
+6. **Review:** The user compares the original specification, generated prompt, artifact, verification notes, and optional full-trace JSON export in one review view.
 
 ## MVP features
 
 ### Blueprint authoring
 
 - Form for the required blueprint sections.
-- Draft and submitted states.
-- Metadata: title, component type, owner, created time, updated time, revision, and status.
-- Human-readable specification preview.
+- Natural-language brief composer plus structured authoring form.
+- Metadata: name, target path, language, framework, dependencies, source, timestamps, and optional implementation plan.
+- Human-readable architecture packet and specification preview.
 
 ### Validation and prompt generation
 
 - Required-field and shape validation.
-- Warnings for incomplete dependencies, ambiguous constraints, and missing acceptance criteria.
+- Review warnings for repaired or incomplete model-proposed structure.
 - Deterministic prompt assembly from structured blueprint data.
 - Prompt preview and copy/export action.
 
 ### Execution records
 
-- One execution record per approved blueprint revision.
-- Status lifecycle: draft, ready, approved, running, completed, needs-review, failed.
-- Links to blueprint revision, generated prompt, AI contribution, artifact, and verification notes.
+- One or more execution records can be created from an approved blueprint prompt.
+- Status lifecycle: pending, running, completed, failed, and needs-review.
+- Links to the blueprint, generated prompt, selected provider/model, AI contribution, artifact, and verification notes.
 
 ### AI contribution and artifact tracking
 
@@ -49,10 +49,12 @@ The MVP is optimized for one user working in one project workspace. It is not a 
 - Captured model/provider metadata when available.
 - Generated artifact stored as text or structured output with a clear artifact type.
 - Traceability from artifact back to the exact blueprint and prompt revision.
+- Independent analysis and creation model selection per operation.
+- Manual catalog refresh with local-model filtering, unavailable-selection visibility, and deterministic mock fallback.
 
 ### Review and verification
 
-- Side-by-side or tabbed review of specification, prompt, artifact, and verification notes.
+- Review surfaces for specification, prompt, artifact, and verification notes.
 - Human verification notes and review status.
 - Basic checks such as schema validity, output completeness, and recorded test/verification results.
 
@@ -67,6 +69,7 @@ The MVP is optimized for one user working in one project workspace. It is not a 
 - Automated architecture correctness proofs.
 - A marketplace of templates, plugins, or model providers.
 - Production-scale analytics, billing, or multi-tenant hosting.
+- Automatic polling or persistence of model selections.
 
 ## Demo scenario
 

@@ -16,16 +16,16 @@ The workspace contains a TypeScript monorepo with React/Vite/Tailwind frontend, 
 
 ## System architecture
 
-The recommended MVP is a small web application with a local or lightweight server-side workspace:
+The implemented MVP is a small web application with a local server-side workspace:
 
-1. **Workspace and document layer** — stores project briefs, component blueprints, specifications, decisions, plans, and verification records in a stable, human-readable format.
+1. **Workspace and document layer** — stores project briefs, component blueprints, implementation packets, prompt artifacts, execution records, and verification records in SQLite, with Markdown/JSON export for review.
 2. **Domain model** — represents architectural artifacts and their relationships: project, component, requirement, decision, task, implementation run, and evidence.
 3. **Orchestration engine** — converts approved artifacts into a bounded implementation workflow with ordered tasks, constraints, acceptance criteria, and required checks.
-4. **Provider adapter** — presents bounded workflow context to Ollama, the deterministic mock, or a future Codex provider, and normalizes results without exposing provider-specific APIs to the domain model.
+4. **Provider adapter** — presents bounded workflow context to Ollama, the deterministic mock, or a future Codex provider, and normalizes results without exposing provider-specific APIs to the domain model. A read-only catalog endpoint exposes the current local Ollama inventory, hides cloud-tagged models, and keeps analysis and creation selections independent and ephemeral.
 5. **Verification layer** — runs or records tests, linting, structural checks, and human review against acceptance criteria.
 6. **User interface** — shows architecture, generated plans, approval gates, execution status, diffs, and verification evidence.
 
-For the hackathon, the persistence layer can begin as versioned Markdown and JSON files. A database, multi-user permissions, and external integrations should be deferred until the workflow is proven.
+The current implementation uses SQLite for durable workspace records and exports the full trace as JSON. Multi-user permissions, remote integrations, and repository mutation remain outside the MVP.
 
 ## Major components
 
@@ -54,13 +54,13 @@ Blueprints, specifications, and decisions
     ↓
 Structured domain model and linked context
     ↓
-Local model proposal with constraints and acceptance criteria
+Provider catalog → selected analysis model → proposal with constraints and acceptance criteria
     ↓
 Human review / approval gate
     ↓
 Deterministic prompt generation
     ↓
-Provider execution through an isolated adapter
+Selected creation model → provider execution through an isolated adapter
     ↓
 Diffs, tests, and verification evidence
     ↓

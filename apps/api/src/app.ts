@@ -1,12 +1,39 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { generateCodexPrompt } from "@the-vault/prompts";
-import { blueprintInputSchema, blueprintProposalSchema, briefInputSchema, executionCreateSchema, providerStatusSchema, verificationInputSchema } from "@the-vault/shared";
+import { blueprintInputSchema, blueprintProposalSchema, briefInputSchema, executionCreateSchema, providerStatusSchema, verificationInputSchema, type ProviderSelection } from "@the-vault/shared";
 import { VaultRepository } from "./repository.js";
 import { MockAiProvider } from "./providers/mock-provider.js";
 import type { AiProvider } from "./providers/types.js";
 import { createConfiguredProvider } from "./providers/configured-provider.js";
+import { OllamaAiProvider } from "./providers/ollama-provider.js";
 import { ExecutionService } from "./services/execution-service.js";
+
+const mockSelection: ProviderSelection = { provider: "mock", model: "deterministic-local" };
+
+function configuredSelections(currentProvider: AiProvider): { analysis: ProviderSelection; creation: ProviderSelection } {
+  if (currentProvider.name !== "ollama") return { analysis: mockSelection, creation: mockSelection };
+  const ollama = currentProvider as OllamaAiProvider;
+  return { analysis: { provider: "ollama", model: ollama.analysisModel }, creation: { provider: "ollama", model: ollama.creationModel } };
+}
+
+function selectionFromLegacy(providerName: "configured" | "mock", currentProvider: AiProvider, role: "analysis" | "creation"): ProviderSelection {
+  if (providerName === "mock") return mockSelection;
+  return configuredSelections(currentProvider)[role];
+}
+
+function providerForSelection(selection: ProviderSelection, role: "analysis" | "creation", currentProvider: AiProvider): AiProvider {
+  if (selection.provider === "mock") return new MockAiProvider(true);
+  const baseUrl = currentProvider instanceof OllamaAiProvider ? currentProvider.baseUrl : undefined;
+  const configured = configuredSelections(currentProvider);
+  const analysisModel = role === "analysis" ? selection.model : configured.analysis.model;
+  const creationModel = role === "creation" ? selection.model : configured.creation.model;
+  return new OllamaAiProvider(baseUrl, analysisModel, creationModel);
+}
+
+function invalidMockSelection(selection: ProviderSelection): boolean {
+  return selection.provider === "mock" && Boolean(selection.model) && selection.model !== mockSelection.model;
+}
 
 export function buildApp(repository = new VaultRepository(), provider: AiProvider = createConfiguredProvider()): FastifyInstance {
   const app = Fastify({ logger: true });
@@ -33,10 +60,25 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
     return providerStatusSchema.parse({ configured: { name: provider.name, model: health.model }, models: health.models, available: health.available, detail: health.detail, fallbackAvailable: provider.name !== "mock" });
   });
 
+  app.get("/api/providers/models", async () => {
+    const configured = configuredSelections(provider);
+    const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
+    return ollama.catalog(configured);
+  });
+
   app.post("/api/blueprint-proposals", async (request, reply) => {
     const parsed = briefInputSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid brief", issues: parsed.error.flatten() });
-    const selectedProvider = parsed.data.provider === "mock" ? new MockAiProvider() : provider;
+    const selection = parsed.data.analysis ?? selectionFromLegacy(parsed.data.provider, provider, "analysis");
+    const selectedProvider = providerForSelection(selection, "analysis", provider);
+    if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
+    if (selection.provider === "ollama") {
+      const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
+      const inventory = await ollama.listModels();
+      if (!selection.model || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) {
+        return reply.code(400).send({ error: "Unavailable provider model", message: "The selected analysis model is not available in the current local catalog." });
+      }
+    }
     try {
       const result = await selectedProvider.generateBlueprint({ brief: parsed.data.brief });
       const proposal = blueprintProposalSchema.parse({
@@ -81,7 +123,16 @@ export function buildApp(repository = new VaultRepository(), provider: AiProvide
     if (!parsed.success) return reply.code(400).send({ error: "Invalid execution request", issues: parsed.error.flatten() });
     const promptArtifact = repository.getPromptArtifact(parsed.data.promptArtifactId);
     if (!promptArtifact) return reply.code(404).send({ error: "Prompt artifact not found" });
-    const selectedProvider = parsed.data.provider === "mock" ? new MockAiProvider(true) : provider;
+    const selection = parsed.data.creation ?? selectionFromLegacy(parsed.data.provider, provider, "creation");
+    if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
+    if (selection.provider === "ollama") {
+      const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
+      const inventory = await ollama.listModels();
+      if (!selection.model || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) {
+        return reply.code(400).send({ error: "Unavailable provider model", message: "The selected creation model is not available in the current local catalog." });
+      }
+    }
+    const selectedProvider = providerForSelection(selection, "creation", provider);
     const execution = selectedProvider === provider ? await executionService.execute(promptArtifact) : await new ExecutionService(repository, selectedProvider).execute(promptArtifact);
     return reply.code(201).send({ ...execution, prompt: promptArtifact.generatedPrompt, evidence: { verificationNotes: execution.verificationNotes } });
   });

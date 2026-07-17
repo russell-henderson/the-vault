@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { OllamaAiProvider } from "../apps/api/src/providers/ollama-provider";
+import { isCloudModel, localModelNames, OllamaAiProvider } from "../apps/api/src/providers/ollama-provider";
 
 describe("Ollama provider", () => {
   it("normalizes a strict JSON blueprint proposal", async () => {
@@ -34,6 +34,16 @@ describe("Ollama provider", () => {
     expect(result.proposal.blueprint.targetPath).toBe("src/components/AnalyticsPanel.tsx");
     expect(result.proposal.blueprint.framework).toBe("React + Tailwind");
     expect(result.proposal.warnings[0]).toContain("omitted");
+    fetchMock.mockRestore();
+  });
+
+  it("filters cloud models and always includes the deterministic mock", async () => {
+    expect(isCloudModel("llama3.2:cloud")).toBe(true);
+    expect(localModelNames(["llama3.2:cloud", "dolphin3:8b", "dolphin3:8b", "llama3.2-16k:latest"])).toEqual(["dolphin3:8b", "llama3.2-16k:latest"]);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ models: [{ name: "llama3.2:3b" }, { name: "llama3.2:cloud" }] }), { status: 200 }));
+    const catalog = await new OllamaAiProvider("http://ollama.test", "llama3.2:3b", "llama3.2:3b").catalog({ analysis: { provider: "ollama", model: "llama3.2:3b" }, creation: { provider: "ollama", model: "llama3.2:3b" } });
+    expect(catalog.models.map((model) => model.model)).toEqual(["llama3.2:3b", "deterministic-local"]);
+    expect(catalog.models.find((model) => model.provider === "mock")?.available).toBe(true);
     fetchMock.mockRestore();
   });
 });

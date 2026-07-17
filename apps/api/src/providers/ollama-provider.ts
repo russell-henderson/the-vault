@@ -1,7 +1,16 @@
-import { blueprintProposalSchema } from "@the-vault/shared";
+import { blueprintProposalSchema, providerCatalogSchema, type ProviderCatalog, type ProviderModelOption, type ProviderSelection } from "@the-vault/shared";
 import type { AiGenerateRequest, AiGenerateResult, AiProvider, BlueprintGenerateRequest, BlueprintGenerateResult } from "./types.js";
 
 type OllamaResponse = { response?: string; error?: string };
+type OllamaTagsResponse = { models?: Array<{ name?: string }> };
+
+export function isCloudModel(model: string): boolean {
+  return model.toLowerCase().split(":").includes("cloud");
+}
+
+export function localModelNames(models: string[]): string[] {
+  return [...new Set(models.map((model) => model.trim()).filter((model) => model && !isCloudModel(model)))].sort((left, right) => left.localeCompare(right));
+}
 
 const blueprintInstruction = `You are an architecture assistant. Convert the user's brief into JSON only. Return exactly this shape:
 {
@@ -132,13 +141,37 @@ export class OllamaAiProvider implements AiProvider {
     try {
       const response = await fetch(`${this.baseUrl}/api/tags`);
       if (!response.ok) return { available: false, detail: `Ollama returned HTTP ${response.status}`, models: { analysis: this.analysisModel, creation: this.creationModel } };
-      const body = await response.json() as { models?: Array<{ name?: string }> };
+      const body = await response.json() as OllamaTagsResponse;
       const names = (body.models ?? []).map((model) => model.name ?? "");
       const analysisInstalled = names.some((name) => name === this.analysisModel || name.startsWith(`${this.analysisModel}:`));
       const creationInstalled = names.some((name) => name === this.creationModel || name.startsWith(`${this.creationModel}:`));
       const missing = [!analysisInstalled ? `analysis model ${this.analysisModel}` : "", !creationInstalled ? `creation model ${this.creationModel}` : ""].filter(Boolean);
       return { available: missing.length === 0, detail: missing.length === 0 ? `Ollama is ready with analysis and creation models` : `Ollama is running, but ${missing.join(" and ")} ${missing.length === 1 ? "is" : "are"} not installed`, models: { analysis: this.analysisModel, creation: this.creationModel } };
     } catch { return { available: false, detail: `Ollama is unavailable at ${this.baseUrl}`, models: { analysis: this.analysisModel, creation: this.creationModel } }; }
+  }
+
+  async catalog(configured: { analysis: ProviderSelection; creation: ProviderSelection }): Promise<ProviderCatalog> {
+    const refreshedAt = new Date().toISOString();
+    const result = await this.listModels();
+    const localModels = localModelNames(result.models);
+    const configuredModels = [configured.analysis, configured.creation]
+      .filter((selection) => selection.provider === "ollama" && selection.model)
+      .map((selection) => selection.model as string);
+    const allModels = [...localModels, ...configuredModels.filter((model) => !localModels.includes(model) && !isCloudModel(model))];
+    const options: ProviderModelOption[] = allModels.map((model) => ({ provider: "ollama", model, label: model, available: localModels.includes(model), cloud: isCloudModel(model) }));
+    options.push({ provider: "mock", model: "deterministic-local", label: "Deterministic mock", available: true, cloud: false });
+    return providerCatalogSchema.parse({ configured, models: options, ollamaAvailable: result.available, detail: result.detail, refreshedAt });
+  }
+
+  async listModels(): Promise<{ models: string[]; available: boolean; detail: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/tags`);
+      if (!response.ok) return { models: [], available: false, detail: `Ollama returned HTTP ${response.status}` };
+      const body = await response.json() as OllamaTagsResponse;
+      return { models: (body.models ?? []).map((model) => model.name ?? "").filter(Boolean), available: true, detail: "Ollama catalog refreshed" };
+    } catch {
+      return { models: [], available: false, detail: `Ollama is unavailable at ${this.baseUrl}` };
+    }
   }
 
   private async request(body: Record<string, unknown>): Promise<OllamaResponse> {

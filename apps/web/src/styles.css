@@ -39,6 +39,8 @@ button:disabled { cursor: wait; opacity: .65; }
 .brief-input:focus { border-color: rgba(34,211,238,.7); box-shadow: 0 0 0 3px rgba(34,211,238,.1), 0 0 30px rgba(34,211,238,.08); }
 .provider-select { display: flex; flex-direction: column; gap: .35rem; color: #64748b; font-size: .66rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .provider-select select { border: 1px solid rgba(148,163,184,.16); border-radius: .6rem; background: #111b2d; padding: .65rem .75rem; color: #cbd5e1; font-size: .75rem; letter-spacing: normal; text-transform: none; outline: none; }
+.provider-role-control { min-width: min(100%, 20rem); flex: 1; }
+.refresh-button { white-space: nowrap; font-size: .75rem; }
 .flow-list { margin-top: 1.5rem; }
 .flow-item { position: relative; display: flex; gap: .9rem; padding: 1rem 0; }
 .flow-number, .step-index { color: #22d3ee; font-family: ui-monospace, monospace; font-size: .72rem; }

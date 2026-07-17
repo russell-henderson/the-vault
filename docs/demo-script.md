@@ -30,9 +30,9 @@ Show the dashboard headline: **Architecture, with a visible chain of custody.** 
 
 ## 0:25–1:05 — The brief becomes a proposal
 
-Select **Start with a brief**. Submit the seeded analytics-panel brief and explain that the local model proposes React + TypeScript + Tailwind, API dependencies, responsive layout, loading/error states, and accessibility constraints.
+Select **Start with a brief**. Use **Refresh catalog** if you pulled a model after opening the app, then choose the analysis model for the proposal. Explain that the local model proposes React + TypeScript + Tailwind, API dependencies, responsive layout, loading/error states, and accessibility constraints.
 
-If Ollama is unavailable, choose **Deterministic mock fallback** and explicitly call out the provider badge.
+If Ollama is unavailable, choose **Deterministic mock** and explicitly call out the provider badge.
 
 ## 1:05–1:35 — Human approval
 
@@ -52,7 +52,7 @@ Say:
 
 ## 2:05–2:35 — The execution boundary
 
-Select **Launch execution**. Show the provider/model, duration, artifact type, artifact location, and execution history.
+Choose the creation model, then select **Launch execution**. Show the provider/model, duration, artifact type, artifact location, and execution history.
 
 Say:
 
@@ -75,6 +75,7 @@ Say:
 ## Demo recovery
 
 - If the seeded packet is missing, run `npm run seed:demo` and refresh the dashboard.
-- If Ollama is unavailable, choose the visible deterministic mock fallback.
+- If Ollama is unavailable, choose the visible **Deterministic mock** option.
+- If a model was removed after the catalog loaded, select **Refresh catalog** and choose another available model; the unavailable selection remains visible until changed.
 - If the API is unavailable, start `npm run dev:api` on port 3001.
 - Do not describe the mock result as an Ollama response.
