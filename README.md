@@ -1,3 +1,13 @@
+<<<<<<< HEAD
+=======
+
+<img width="1363" height="1080" alt="Screenshot 2026-07-18 153326" src="https://github.com/user-attachments/assets/bc075b5a-1312-414a-8ac6-b49d3a5b3102" />
+
+---
+
+
+
+>>>>>>> 1a11343b8f58db72f5f6e17e5bf0010a3a5a9fce
 # The Vault Architect
 
 **v1.0.0 · Local-first architecture orchestration for reviewable AI-assisted development**
