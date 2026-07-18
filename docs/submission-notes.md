@@ -1,215 +1,67 @@
-# Vault Architect - OpenAI Build Week Submission Notes
+# The Vault Architect — Submission Notes
 
-## Project Overview
+**Release:** `v1.0.0`
+**Category:** Developer Tools
+**Secondary category:** Work & Productivity
 
-Vault Architect is an AI-native software development orchestration platform designed to preserve human architectural intent while enabling AI-assisted implementation workflows.
+## Project overview
 
-Instead of treating AI as a simple code generator, Vault Architect creates a structured bridge between:
+The Vault Architect is a local-first architecture orchestration workspace. It preserves human intent and constraints while making AI-assisted development reviewable from brief to blueprint, generated document, execution evidence, and verification.
 
-- Human system design decisions
-- Structured software specifications
-- AI-generated implementation prompts
-- Execution tracking
-- Verification evidence
+The product is not an autonomous coding agent. The registry authorizes supported directions, the user approves the blueprint, providers generate bounded artifacts, and the evidence remains attached to the originating intent.
 
-The goal is to make AI-assisted development more predictable, transparent, and repeatable.
+## Problem
 
----
+AI coding tools can move quickly while architectural decisions drift or disappear. Teams need to know what was requested, which constraints were accepted, what the model produced, which provider/model was used, and whether a human verified the result.
 
-# Problem Statement
+## Current solution
 
-Modern AI coding assistants are powerful, but they often lack persistent architectural context.
-
-Developers frequently encounter problems such as:
-
-- AI-generated code drifting from intended architecture
-- Loss of design decisions during implementation
-- Difficulty tracking why a change was made
-- Lack of verification history
-- Limited visibility into AI contributions
-
-Vault Architect addresses this by introducing a structured specification layer between human planning and AI execution.
-
----
-
-# Solution
-
-Vault Architect introduces a workflow:
-
-```
-Human Intent
-|
-v
-Structured Blueprint
-|
-v
-Deterministic Prompt Generation
-|
-v
-AI Execution Layer
-|
-v
-Artifact Tracking
-|
-v
-Verification Evidence
+```text
+Human brief
+  → discovery and constraint extraction
+  → confirmed registered generator
+  → Architecture Packet V2
+  → human approval
+  → deterministic prompt artifact
+  → Ollama or deterministic mock execution
+  → SSE document workspace
+  → verification and export
 ```
 
-The system creates a persistent record of:
+The v1.0.0 experience includes:
 
-- What was requested
-- Why it was requested
-- How the AI was instructed
-- What was generated
-- How the result was verified
+- registry-backed discovery with explicit `Review Required` states;
+- independent analysis and creation provider/model selection;
+- local Ollama support plus an explicit deterministic mock;
+- SQLite persistence for blueprints, packets, prompts, executions, and verification notes;
+- live SSE Markdown generation with a persona-driven thought cycle;
+- document rerolls, local editing, Markdown/ZIP exports, and execution evidence;
+- canonical tags, rename/delete/bulk-delete operations, and browser-local IndexedDB cover art;
+- a premium dashboard centered on the authored `THE VAULT ARCHITECT` identity.
 
----
+## Why it matters
 
-# Key Features
+Vault Architect makes the handoff between architecture and implementation visible. It gives AI useful context without giving AI authority to redefine the request or silently expand scope.
 
-## Blueprint Authoring
+## Technology
 
-Users define software components using structured architectural information:
+- React, TypeScript, Vite, and Tailwind CSS
+- Fastify and TypeScript
+- SQLite through `better-sqlite3`
+- Zod shared contracts
+- Ollama and deterministic provider adapters
+- Vitest verification suite
 
-- Target path
-- Language
-- Framework
-- Dependencies
-- Architecture overview
-- Core logic
-- UI requirements
-- Constraints
+## Human and AI collaboration
 
----
+Human decisions control product direction, architecture boundaries, approval semantics, security constraints, and release scope. Codex contributed implementation, tests, documentation, UI refinement, provider integration, and verification work within those boundaries.
 
-## Prompt Compilation
+## Demonstration path
 
-Vault Architect transforms structured specifications into optimized Codex-ready prompts.
+Use the analytics dashboard panel brief to demonstrate discovery, generator confirmation, packet review, approval, prompt compilation, model selection, live document streaming, verification, and export. Then return to the vault to show tag management, cover personalization, and deletion synchronization.
 
-This creates consistency between:
+The three-minute walkthrough is maintained in [demo-script.md](demo-script.md). The current implementation and boundaries are maintained in [architecture.md](architecture.md) and [development-plan.md](development-plan.md).
 
-- Human requirements
-- AI instructions
-- Generated artifacts
+## Known verification note
 
----
-
-## Execution Evidence Layer
-
-The system tracks AI-assisted execution through:
-
-- Execution lifecycle states
-- Generated outputs
-- Artifact references
-- Verification notes
-
----
-
-## Provider-Neutral AI Architecture
-
-AI capabilities are abstracted behind a provider interface.
-
-Current implementation:
-
-- Ollama local provider
-- Live local model catalog with cloud filtering
-- Independent analysis and creation model selection
-- Deterministic mock provider fallback
-- Execution lifecycle
-- Evidence capture
-
-Future support:
-
-- OpenAI Codex
-- Additional AI providers
-
-## Current demo path
-
-The demo loads provider health and the live catalog, lets the user refresh after pulling a model, selects an analysis model for proposal generation, requires human approval, compiles the prompt, selects a creation model for execution, and records provider/model metadata with the result. The user can copy Markdown artifacts or export the full trace as JSON. Cloud-tagged models are hidden by default; the deterministic mock remains available without Ollama.
-
-The proposal path is domain-aware and registry-driven. It classifies intent before generation and supports three initial registered stacks: Swift/SpriteKit for mobile physics, Python/Flet for desktop UI, and React/TypeScript for web dashboards. Classification confidence and generator compatibility are validated before any prompt is built. Unsupported or ambiguous intent enters `Review Required` rather than receiving a legacy template. Successful proposals carry Architecture Packet V2 with dynamic components, layers, data flows, and provenance.
-
----
-
-# Technology Stack
-
-## Frontend
-
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-
-## Backend
-
-- Node.js
-- TypeScript
-- Fastify
-
-## Validation
-
-- Zod
-
-## Persistence
-
-- SQLite
-
-## Testing
-
-- Vitest
-
----
-
-# How Codex Was Used
-
-Codex was used as an implementation partner throughout development.
-
-Workflow:
-
-1. Human-defined architecture and product requirements.
-2. Codex analyzed repository structure.
-3. Codex generated implementation plans.
-4. Codex implemented isolated milestones.
-5. Human reviewed architecture and approved direction.
-6. Automated tests verified changes.
-
-Codex contributed to:
-
-- Repository scaffolding
-- TypeScript implementation
-- API development
-- UI development
-- Testing
-- Documentation
-
-Human decisions controlled:
-
-- Product direction
-- Architecture boundaries
-- Feature prioritization
-- Security constraints
-- MVP scope
-
----
-
-# Future Vision
-
-Vault Architect can evolve into a complete AI development operating system where teams can:
-
-- Maintain architectural memory
-- Coordinate multiple AI agents
-- Track AI-generated changes
-- Validate implementation decisions
-- Preserve institutional engineering knowledge
-
----
-
-# OpenAI Build Week Category
-
-Primary Category:
-
-Developer Tools
-
-Secondary Category:
-
-Work & Productivity
+Static checks, production builds, focused tests, and live API mutation checks pass. The full suite has an environment-specific `better-sqlite3` native ABI mismatch in the current runtime; the exact result is recorded in [BUILD_LOG.md](../BUILD_LOG.md) and the root README.

@@ -3,7 +3,7 @@
 **Status:** Canonical architecture record
 **Last reviewed:** 2026-07-18
 
-This document consolidates the former architecture overview, system design, authority contract, enrichment boundary, and implemented architecture diagram. Detailed generator policy remains in [registry-generator-engine.md](registry-generator-engine.md). Provider details remain in [codex-integration.md](codex-integration.md). The accepted authority decision remains in [ADR-001](adr/ADR-001-authority-model.md).
+This document is the single technical source of truth for the current application. It covers the system structure, authority contract, enrichment boundary, provider strategy, registry policy, execution lifecycle, SSE workspace, browser-local cover art, and API boundary. The accepted authority decision remains in [ADR-001](adr/ADR-001-authority-model.md).
 
 ## 1. Purpose and boundary
 
@@ -221,6 +221,10 @@ Provider inputs are bounded and must not contain unrestricted workspace access, 
 
 The normal API path passes confirmedBrief and AuthorizedSynthesisContext for final blueprint synthesis. Provider compatibility paths that accept a plain synthesis context remain a hardening gap.
 
+Provider configuration is local and environment-based. `AI_PROVIDER=ollama` selects Ollama as the configured default, `OLLAMA_BASE_URL` defaults to `http://localhost:11434`, `OLLAMA_ANALYSIS_MODEL` defaults to `llama3.2:3b`, and `OLLAMA_CREATION_MODEL` defaults to `dolphin3:8b`. The deterministic mock is always available for offline development. The UI can select analysis and creation models independently; the API validates selections against the refreshed local catalog and records the selected provider metadata.
+
+Execution follows one bounded lifecycle: create a pending record, validate the provider, mark it running, generate or stream output, persist completed or failed evidence, and allow human verification. The streaming workspace closes each `EventSource` on completion, error, or unmount and commits only completed document buffers to the local workspace state.
+
 ## 10. Persistence and ownership
 
 ~~~text
@@ -319,9 +323,7 @@ Known gaps:
 ## 14. Related documents
 
 - [development-plan.md](development-plan.md): MVP scope, acceptance, roadmap, backlog, and verification.
-- [registry-generator-engine.md](registry-generator-engine.md): detailed registry and packet contract.
-- [codex-integration.md](codex-integration.md): provider and execution contract.
 - [ADR-001](adr/ADR-001-authority-model.md): accepted authority-boundary decision.
-- [RUN.md](RUN.md): reusable governing prompt and operating runbook.
 - [demo-script.md](demo-script.md): repeatable product story and demonstration.
+- [submission-notes.md](submission-notes.md): current product framing for external submission.
 - [reports](reports/): historical API and workflow evidence.

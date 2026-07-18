@@ -14,6 +14,13 @@
 - **Architecture boundary:** Cover blobs remain outside the API, SQLite repository, provider prompts, and exports. SSE remains the sole live generation transport and completed documents remain the only persisted stream result.
 - **Verification results:** Focused rendering, API-client, export, and provider tests passed with 4 files and 19 tests. `npm run typecheck`, `npm run build`, and `git diff --check` passed. The full suite reached 18 files and 79 tests: 58 passed and 21 database-backed tests failed before execution because the installed `better-sqlite3` binary uses Node ABI 127 while the active runtime requires ABI 147. Tests were not weakened.
 
+## 2026-07-18 — Documentation consolidation and prompt artifact purge
+
+- **Decision:** Reduce documentation to durable product, architecture, development, demo, submission, decision, evidence, and build-history records. Standalone reusable prompts, compatibility pages, duplicate technical proposals, and superseded system-design pages are no longer maintained.
+- **Consolidation:** The current README now describes the v1.0.0 application, live SSE workspace, dashboard vault operations, local cover art, provider modes, API surface, verification state, and release boundary. Provider, registry, execution, and UI ownership details are consolidated in `docs/architecture.md`; scope and verification remain in `docs/development-plan.md`; the demo and submission narratives are current.
+- **Removed documentation artifacts:** Deleted `docs/RUN.md`, `docs/agents.md`, compatibility pages, duplicate provider/registry references, `docs/synthesis_refactor_proposal.md`, and the superseded system-design/vault pages. Historical build-log entries and workflow reports remain as evidence.
+- **Verification:** Documentation links were audited after consolidation; no current README or docs index references the removed artifacts.
+
 ## 2026-07-15 — Repository foundation
 
 - **Codex model used:** Codex runtime; exact model identifier is not exposed in this workspace.

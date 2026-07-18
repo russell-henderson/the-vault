@@ -42,7 +42,7 @@ Use AI_PROVIDER=ollama for the configured Ollama path. If Ollama is unavailable,
 
 ### 0:00–0:25 — Establish the problem
 
-Show the dashboard and local provider signal.
+Show the `THE VAULT ARCHITECT` masthead, local workspace/model metadata, status ribbon, and provider signal.
 
 Say:
 
@@ -80,9 +80,11 @@ Say:
 
 Review the PRD preview, choose ARCHITECTURE.md, API.md, DEPLOYMENT.md, and TROUBLESHOOTING.md, then select Generate Core Documentation.
 
-The dedicated workspace opens with PRD.md, README.md, and the selected documents. Show the sidebar statuses, Markdown preview, and batch/individual export controls.
+The dedicated workspace opens with PRD.md, README.md, and the selected documents. Show the sidebar statuses, fading persona thought cycle, live SSE Markdown preview, and batch/individual export controls. The cursor and status text make progress visible without a blocking spinner or polling loop.
 
 Select one document and use Reroll This Document. Point out that the reroll is linked to the same immutable PRD and does not alter neighboring files.
+
+Return to the dashboard briefly to show canonical tag filters, the card action menu, browser-local cover customization, and confirmed deletion behavior.
 
 ### 2:35–2:55 — Execute through a replaceable provider
 

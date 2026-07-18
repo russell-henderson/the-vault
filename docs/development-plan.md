@@ -198,9 +198,10 @@ Current record:
 
 - typecheck passes in the current workspace;
 - build passes in the current workspace;
-- focused authority/provider checks pass in the current workspace;
-- the historical 2026-07-17 workflow report recorded 17 test files and 67 passing tests;
-- a current better-sqlite3 ABI mismatch is an environment blocker, not evidence of an application logic failure.
+- focused rendering, API-client, provider, and export checks pass with 19 tests;
+- the live API mutation flow has been verified for tag persistence and blueprint deletion;
+- release `v1.0.0` is tagged and merged into local `main`;
+- the full suite currently reports 58 passing tests and 21 database-backed tests blocked by a better-sqlite3 ABI mismatch, which is an environment blocker rather than evidence of an application logic failure.
 
 ## 11. Release rule
 

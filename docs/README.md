@@ -1,43 +1,32 @@
 # Vault Architect Documentation
 
 **Status:** Canonical documentation index
+**Release:** `v1.0.0`
 **Last reviewed:** 2026-07-18
 
-Use this page to choose the correct project document. Not every Markdown file is an independent source of truth.
+This directory contains durable product documentation, accepted decisions, submission material, and historical verification evidence. Current source code and executable tests remain the implementation authority.
 
 ## Canonical documents
 
 | Document | Use it for |
 | --- | --- |
-| [architecture.md](architecture.md) | System structure, authority, enrichment, trust boundaries, data flow, invariants, and change policy |
-| [development-plan.md](development-plan.md) | MVP scope, acceptance criteria, milestones, backlog, testing, and release readiness |
-| [demo-script.md](demo-script.md) | Product narrative, three-minute demo, setup, checkpoints, and recovery |
-| [RUN.md](RUN.md) | Reusable governing prompt and operating runbook |
-
-## Specialized references
-
-| Document | Use it for |
-| --- | --- |
-| [registry-generator-engine.md](registry-generator-engine.md) | Generator definitions, registry policy, classification, constraints, packet contract, and routing |
-| [codex-integration.md](codex-integration.md) | Provider abstraction, Ollama, execution lifecycle, model selection, and security |
+| [architecture.md](architecture.md) | System structure, authority boundaries, providers, persistence, SSE, UI ownership, API surface, and security |
+| [development-plan.md](development-plan.md) | Product scope, acceptance criteria, delivery history, hardening backlog, testing, and release readiness |
+| [demo-script.md](demo-script.md) | Current product narrative, local setup, three-minute walkthrough, recovery, and evidence checklist |
+| [submission-notes.md](submission-notes.md) | Current external-submission framing and judging narrative |
 | [ADR-001](adr/ADR-001-authority-model.md) | Accepted authority-boundary decision and rejected alternatives |
-| [synthesis_refactor_proposal.md](synthesis_refactor_proposal.md) | Constraint-driven synthesis rationale and historical context |
-| [submission-notes.md](submission-notes.md) | Product framing and submission material |
-| [reports](reports/) | Historical API and workflow evidence |
+| [BUILD_LOG.md](../BUILD_LOG.md) | Chronological implementation decisions, contributions, verification, and release history |
 
-## Compatibility pages
+## Evidence
 
-These paths remain so historical links continue to resolve. Their substantive content is consolidated:
+- [API coverage report](reports/discovery-actions-api-report.md)
+- [Entire workflow trace](reports/entire-workflow-report.md)
 
-- [ARCHITECTURE_CONTRACT.md](ARCHITECTURE_CONTRACT.md) → [architecture.md](architecture.md)
-- [ARCHITECTURE_ENRICHMENT.md](ARCHITECTURE_ENRICHMENT.md) → [architecture.md](architecture.md)
-- [architecture-diagram.md](architecture-diagram.md) → [architecture.md](architecture.md)
-- [system-design.md](system-design.md) → [architecture.md](architecture.md)
-- [mvp-definition.md](mvp-definition.md) → [development-plan.md](development-plan.md)
-- [demo-story.md](demo-story.md) → [demo-script.md](demo-script.md)
-- [agents.md](agents.md) → [architecture.md](architecture.md), [development-plan.md](development-plan.md), and [ADR-001](adr/ADR-001-authority-model.md)
-- [vault.md](vault.md) → [architecture.md](architecture.md) and [development-plan.md](development-plan.md)
+These reports are historical evidence. They do not override current source code, tests, or the verification status recorded in the README and build log.
 
-## Documentation rule
+## Documentation hygiene
 
-Current code and tests establish implementation truth. Accepted ADRs establish decisions. Canonical documents explain the current system. Reports record historical evidence. Compatibility pages preserve navigation but must not accumulate new requirements.
+- Product behavior belongs in the README and canonical documents.
+- Architectural changes require an ADR plus updates to `architecture.md`, `development-plan.md`, tests, and `BUILD_LOG.md`.
+- Generated prompts and implementation instructions belong in application source or runtime artifacts, not standalone project documentation.
+- Historical reports remain immutable evidence; new requirements must not be added to them.

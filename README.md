@@ -1,31 +1,72 @@
-<img width="1875" height="928" alt="image" src="https://github.com/user-attachments/assets/631b3d1e-d069-417d-9cfc-59c121a61f57" />
-
-
 # The Vault Architect
 
-The Vault Architect is an AI-native architecture workflow. It turns a human brief into a validated blueprint, a reviewable architecture packet, a provider-specific execution result, and a traceable verification record.
+**v1.0.0 · Local-first architecture orchestration for reviewable AI-assisted development**
 
-## What the product does
-
-Vault Architect gives an engineer a visible handoff between architecture and AI-assisted implementation:
+The Vault Architect turns a human brief into a bounded, reviewable engineering handoff. It keeps intent, constraints, architecture decisions, generated documents, provider metadata, and verification evidence connected from the first brief through the final artifact.
 
 ```text
-Brief → AI blueprint proposal → Human approval → Compile prompt → Execute locally → Review evidence
+Brief → Discover → Confirm → Synthesize → Approve → Compile → Stream → Verify
 ```
 
-The human remains responsible for the specification and verification. Ollama is supported as a local provider; the deterministic mock remains available as an explicit, labeled fallback.
+The product is deliberately human-governed. Providers propose content; the user confirms the direction, approves the blueprint, reviews generated documents, and records verification evidence.
 
-## Technology stack
+## What is in the current release
 
-- React, TypeScript, Vite, and Tailwind CSS
-- Node.js, TypeScript, and Fastify
-- SQLite with a typed repository abstraction
-- Zod for shared validation
-- Provider-neutral AI adapter with Ollama and deterministic mock providers
+- **Guided architecture workflow:** write a brief, inspect registry-backed recommendations, confirm a generator, and review the proposed Architecture Packet V2 before saving.
+- **Authority boundaries:** explicit constraints, unsupported technologies, ambiguous intent, and incompatible generators stop at `Review Required` before provider synthesis or persistence.
+- **Provider-neutral generation:** use local Ollama models or the deterministic mock provider. Analysis and creation models can be selected independently.
+- **Prompt and execution evidence:** compile deterministic prompt artifacts, launch bounded executions, inspect generated output and provider metadata, and record human verification notes.
+- **Real-time document workspace:** generate PRD and core documents through SSE, watch Markdown tokens arrive live, reroll one document without disturbing the others, edit locally, and export Markdown or ZIP bundles.
+- **Premium blueprint vault:** manage tags, rename records, delete single or selected blueprints, filter by canonical tags, and personalize cards with browser-local cover art.
+- **Local-first cover customization:** PNG, JPEG, and WebP covers are resized in the browser and stored in IndexedDB by blueprint ID. They never enter SQLite, provider prompts, or the server API.
+- **Traceable operations:** the API persists blueprints, packets, prompt artifacts, execution records, provider metadata, and verification notes in SQLite.
 
-## Local Ollama setup
+## Architecture at a glance
 
-Install Ollama separately, start it, and pull a model:
+```text
+React + Vite + Tailwind
+  ├─ Dashboard / Brief Composer / Proposal Review
+  ├─ Blueprint Detail / Document Workspace
+  └─ IndexedDB cover art + client-side exports
+          │ HTTP + SSE
+Fastify API + shared Zod contracts
+  ├─ Discovery and authority orchestration
+  ├─ Generator registry and Architecture Packet V2
+  ├─ Prompt compilation and execution lifecycle
+  └─ SQLite repository
+          │ bounded provider adapter
+Ollama (local) or deterministic mock
+```
+
+Registered generator definitions currently cover:
+
+- `swift-spritekit` — mobile physics with Swift and SpriteKit;
+- `python-flet` — desktop UI with Python and Flet;
+- `react-typescript` — web dashboards with React and TypeScript/Tailwind.
+
+## Local setup
+
+Requirements: Node.js 20+ and npm 10+.
+
+```bash
+npm install
+npm run typecheck
+npm run build
+npm test
+```
+
+Start the services in separate terminals:
+
+```bash
+npm run dev:api   # http://localhost:3001
+npm run dev:web   # http://localhost:5173
+```
+
+The API stores SQLite data at `apps/api/data/vault.db`. Set `VAULT_DATABASE_PATH` to use another location.
+
+### Ollama
+
+Ollama is optional. The deterministic mock works without it.
 
 ```bash
 ollama serve
@@ -33,172 +74,72 @@ ollama pull llama3.2:3b
 ollama pull dolphin3:8b
 ```
 
-Use `.env.example` as a reference, then set the variables in the API process. PowerShell example:
-
-```powershell
-$env:AI_PROVIDER="ollama"
-$env:OLLAMA_BASE_URL="http://localhost:11434"
-$env:OLLAMA_ANALYSIS_MODEL="llama3.2:3b"
-$env:OLLAMA_CREATION_MODEL="dolphin3:8b"
-npm run dev:api
-```
-
-POSIX shell example:
+Configure the API with `.env.example` values or environment variables:
 
 ```bash
 AI_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_ANALYSIS_MODEL=llama3.2:3b
 OLLAMA_CREATION_MODEL=dolphin3:8b
-npm run dev:api
 ```
 
-The dashboard shows both configured model roles and refreshes the live local catalog on startup. Use **Refresh catalog** after pulling a new model; cloud-tagged models remain hidden. `llama3.2:3b` handles fast structured analysis and blueprint proposals; `dolphin3:8b` handles creation/execution artifacts. If Ollama is unavailable, choose **Deterministic mock** in either role. The fallback is surfaced in the proposal and execution metadata; it is never presented as an Ollama response.
+The dashboard reports provider health and the active model. Refresh the catalog after pulling a new local model. Cloud-tagged models are excluded from selection.
 
-## Current workflow
+## Product walkthrough
 
-The current demo implements:
+1. Select **Start with a brief** and describe the intended outcome and constraints.
+2. Run discovery, compare registered options, confirm the intended generator, and review the proposal.
+3. Select **Approve & save blueprint** to persist the blueprint and Architecture Packet V2.
+4. Compile the deterministic prompt artifact and choose the creation provider/model.
+5. Generate the PRD and selected core documents, then open the workspace.
+6. Review the live SSE stream, edit or reroll a document, and export the completed workspace.
+7. Return to the vault to tag, rename, cover, review, or delete blueprint records.
+
+## API surface
+
+| Area | Routes |
+| --- | --- |
+| Provider state | `GET /api/providers/status`, `GET /api/providers/models` |
+| Discovery | `POST /api/architecture-discovery`, `POST /api/blueprint-proposals` |
+| Blueprints | `POST/GET /api/blueprints`, `GET/PATCH/DELETE /api/blueprints/:id`, `POST /api/blueprints/bulk-delete` |
+| Prompts | `POST /api/blueprints/:id/generate-prompt`, `GET /api/blueprints/:id/prompt` |
+| Workspace | `GET /api/blueprints/:id/workspace`, `POST /api/blueprints/:id/generate-core-docs`, `POST /api/blueprints/:id/reroll-doc` |
+| Streaming | `GET /api/blueprints/:id/generate/stream?filename=README.md&provider=mock&model=deterministic-local` |
+| Execution | `POST /api/executions`, `GET /api/executions/:id`, `POST /api/executions/:id/verify` |
+
+The SSE endpoint emits `data: {"chunk":"..."}` frames and ends with `data: {"status":"DONE"}`. Errors are emitted as structured error events and are shown in the workspace without persisting an incomplete document as completed output.
+
+## Verification status
+
+The release build and static checks pass:
 
 ```text
-Brief → structured blueprint proposal → Zod validation → SQLite persistence → architecture packet → PRD prompt/context summary → document workspace → per-document execution/reroll → verification/export
+npm run typecheck  ✓
+npm run build      ✓
+Focused tests      ✓ 19 tests
 ```
 
-### v1.0.0 workspace polish
+The full suite currently has an environment-specific blocker: 58 tests pass, while 21 database-backed tests cannot load the installed `better-sqlite3` binary because it was compiled for Node ABI 127 and the active runtime requires ABI 147. The application’s live API mutation flow has been verified separately against the running v1.0.0 service.
 
-The Vault Architect dashboard now presents an authored local-workspace masthead, a live provider status ribbon, and blueprint cards that can be personalized with browser-local cover art. Use a card’s kebab menu to upload a PNG, JPEG, or WebP cover; the image is resized in the browser and stored in IndexedDB for that blueprint on the current device. Cover art is intentionally not uploaded to the API or included in server persistence.
+## Boundaries and non-goals
 
-During core-document generation, the workspace uses SSE token streaming with a live Markdown preview and a persona-driven thought cycle. The primary status line and secondary encouragement line fade through the generation lifecycle while the stream remains active.
+- No multi-user accounts, permissions, or collaboration model.
+- No autonomous repository mutation or unreviewed code merge.
+- No unrestricted agent shell or workspace access.
+- No server-side persistence for browser-local cover art.
+- No claim of complete verification while the native SQLite dependency remains mismatched.
 
-### Phase 4 domain-aware routing
+## Documentation
 
-Proposal generation now resolves intent before a prompt is built. `GeneratorRegistry` is the sole authority for the initial stacks:
+- [Documentation index](docs/README.md)
+- [Canonical architecture](docs/architecture.md)
+- [Product and development plan](docs/development-plan.md)
+- [Demo script](docs/demo-script.md)
+- [Submission notes](docs/submission-notes.md)
+- [Architecture decision record](docs/adr/ADR-001-authority-model.md)
+- [Build log](BUILD_LOG.md)
+- [Historical reports](docs/reports/)
 
-- `swift-spritekit` — mobile physics, Swift/SpriteKit, scene and physics components.
-- `python-flet` — desktop UI, Python/Flet, view, event, state, and persistence components.
-- `react-typescript` — web dashboard, React/TypeScript, API, accessibility, and persistence components.
+## Release
 
-The classifier ranks registered capabilities using the brief’s domain signals and applies a confidence and alternative-margin threshold. Unsupported or ambiguous intent returns `Review Required`; it never falls back to React/Tailwind or another template, and no provider prompt or blueprint is saved. A successful proposal carries a versioned dynamic Architecture Packet with component definitions, layers, data flows, validation, and provenance links. See [`docs/architecture.md`](docs/architecture.md) and [`docs/registry-generator-engine.md`](docs/registry-generator-engine.md).
-
-## Requirements
-
-- Node.js 20+
-- npm 10+
-
-## Run locally
-
-```bash
-npm install
-npm test
-npm run typecheck
-npm run build
-npm run seed:demo
-```
-
-Start the API and web app in separate terminals:
-
-```bash
-npm run dev:api
-npm run dev:web
-```
-
-The API listens on `http://localhost:3001` and stores SQLite data at `apps/api/data/vault.db`. Set `VAULT_DATABASE_PATH` to override the database path.
-
-For a presentation-ready local demo, run `npm run seed:demo` once after installation. It creates the realistic **AI Dashboard Analytics Panel** blueprint and its architecture packet if it does not already exist.
-
-## Three-minute demo workflow
-
-1. Open the dashboard and select **Start with a brief**.
-2. Refresh the catalog if needed, choose an analysis model, and submit the seeded analytics-panel brief using Ollama or the deterministic mock.
-3. Review the generated blueprint, files-to-touch, constraints, and acceptance checks.
-4. Select **Approve & save blueprint**.
-5. Select **Compile prompt**, choose a creation model, then select **Launch execution**.
-6. Review the PRD summary, select the core documents to generate, and open the document workspace.
-7. Export the generated Markdown or ZIP, and reroll an individual document when its content needs revision.
-
-## API examples
-
-Create a blueprint:
-
-```bash
-curl -X POST http://localhost:3001/api/blueprints \
-  -H "content-type: application/json" \
-  -d '{"name":"FeatureFlagPanel","description":"A dashboard panel for editing feature flags.","targetPath":"src/components/FeatureFlagPanel.tsx","language":"TypeScript","framework":"React","dependencies":["feature-flag-api"],"architectureOverview":"A presentational panel that consumes feature flag data.","coreLogic":"Render loading, error, and ready states without owning persistence.","layoutDesign":"Keyboard-accessible form controls with inline validation.","constraints":["Do not persist server state in the component.","Support keyboard navigation."]}'
-```
-
-Generate the prompt and execution record:
-
-```bash
-curl -X POST http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/generate-prompt
-```
-
-Generate selected core documents:
-
-```bash
-curl -X POST http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/generate-core-docs \
-  -H "content-type: application/json" \
-  -d '{"requestedFiles":["README.md","ARCHITECTURE.md","API.md"],"creation":{"provider":"mock","model":"deterministic-local"}}'
-```
-
-Open the workspace or reroll one document:
-
-```bash
-curl http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/workspace
-curl -X POST http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/reroll-doc \
-  -H "content-type: application/json" \
-  -d '{"filename":"API.md"}'
-```
-
-Stream a core document in real time:
-
-```bash
-curl -N "http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/generate/stream?filename=README.md&provider=mock&model=deterministic-local"
-```
-
-The stream emits `data: {"chunk":"..."}` frames and finishes with `data: {"status":"DONE"}`.
-
-Generate a blueprint proposal:
-
-```bash
-curl -X POST http://localhost:3001/api/blueprint-proposals \
-  -H "content-type: application/json" \
-  -d '{"brief":"Build an accessible analytics dashboard panel with loading, error, empty, and ready states.","provider":"configured"}'
-```
-
-Choose a specific analysis model:
-
-```bash
-curl -X POST http://localhost:3001/api/blueprint-proposals \
-  -H "content-type: application/json" \
-  -d '{"brief":"Build an accessible analytics dashboard panel.","analysis":{"provider":"ollama","model":"llama3.2:3b"}}'
-```
-
-Choose a specific creation model:
-
-```bash
-curl -X POST http://localhost:3001/api/executions \
-  -H "content-type: application/json" \
-  -d '{"promptArtifactId":"<PROMPT_ARTIFACT_ID>","creation":{"provider":"mock","model":"deterministic-local"}}'
-```
-
-Check local provider health:
-
-```bash
-curl http://localhost:3001/api/providers/status
-```
-
-List selectable local models:
-
-```bash
-curl http://localhost:3001/api/providers/models
-```
-
-Analysis and creation model choices are per operation and are not persisted to blueprints. The API validates each Ollama selection against the current local catalog, so removed or cloud-tagged models cannot run silently.
-
-## Workspace layout
-
-- `apps/api` — Fastify API and typed SQLite repository.
-- `apps/web` — minimal React/Vite/Tailwind scaffold.
-- `packages/shared` — Zod schemas and shared domain types.
-- `packages/prompts` — deterministic Codex prompt generation.
-- `tests` — unit and repository tests.
-- `docs` — architecture and planning documents.
+The current local release is `v1.0.0`, merged into local `main`. Remote push and pull-request publication remain intentionally separate actions.
