@@ -1,5 +1,8 @@
 
-<img width="1568" height="882" alt="image-2" src="https://github.com/user-attachments/assets/4e5ac312-6246-4d42-a42e-b54f20f37943" />
+<img width="1363" height="1080" alt="Screenshot 2026-07-18 153326" src="https://github.com/user-attachments/assets/bc075b5a-1312-414a-8ac6-b49d3a5b3102" />
+
+---
+
 
 
 # The Vault Architect
