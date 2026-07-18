@@ -60,8 +60,14 @@ The dashboard shows both configured model roles and refreshes the live local cat
 The current demo implements:
 
 ```text
-Brief → structured blueprint proposal → Zod validation → SQLite persistence → architecture packet → deterministic prompt → provider execution → verification record
+Brief → structured blueprint proposal → Zod validation → SQLite persistence → architecture packet → PRD prompt/context summary → document workspace → per-document execution/reroll → verification/export
 ```
+
+### v1.0.0 workspace polish
+
+The Vault Architect dashboard now presents an authored local-workspace masthead, a live provider status ribbon, and blueprint cards that can be personalized with browser-local cover art. Use a card’s kebab menu to upload a PNG, JPEG, or WebP cover; the image is resized in the browser and stored in IndexedDB for that blueprint on the current device. Cover art is intentionally not uploaded to the API or included in server persistence.
+
+During core-document generation, the workspace uses SSE token streaming with a live Markdown preview and a persona-driven thought cycle. The primary status line and secondary encouragement line fade through the generation lifecycle while the stream remains active.
 
 ### Phase 4 domain-aware routing
 
@@ -106,8 +112,8 @@ For a presentation-ready local demo, run `npm run seed:demo` once after installa
 3. Review the generated blueprint, files-to-touch, constraints, and acceptance checks.
 4. Select **Approve & save blueprint**.
 5. Select **Compile prompt**, choose a creation model, then select **Launch execution**.
-6. Review provider metadata, the generated packet, and the stage rail.
-7. Add a verification note documenting what was checked.
+6. Review the PRD summary, select the core documents to generate, and open the document workspace.
+7. Export the generated Markdown or ZIP, and reroll an individual document when its content needs revision.
 
 ## API examples
 
@@ -124,6 +130,31 @@ Generate the prompt and execution record:
 ```bash
 curl -X POST http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/generate-prompt
 ```
+
+Generate selected core documents:
+
+```bash
+curl -X POST http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/generate-core-docs \
+  -H "content-type: application/json" \
+  -d '{"requestedFiles":["README.md","ARCHITECTURE.md","API.md"],"creation":{"provider":"mock","model":"deterministic-local"}}'
+```
+
+Open the workspace or reroll one document:
+
+```bash
+curl http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/workspace
+curl -X POST http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/reroll-doc \
+  -H "content-type: application/json" \
+  -d '{"filename":"API.md"}'
+```
+
+Stream a core document in real time:
+
+```bash
+curl -N "http://localhost:3001/api/blueprints/<BLUEPRINT_ID>/generate/stream?filename=README.md&provider=mock&model=deterministic-local"
+```
+
+The stream emits `data: {"chunk":"..."}` frames and finishes with `data: {"status":"DONE"}`.
 
 Generate a blueprint proposal:
 

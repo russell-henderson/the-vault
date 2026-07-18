@@ -1,5 +1,19 @@
 # The Vault Architect — Build Log
 
+## 2026-07-18 — Phase 7 SSE streaming and premium vault dashboard
+
+- **Origin and decision:** Implemented the approved real-time document generation and Dashboard overhaul while preserving the existing provider, persistence, and human-review boundaries.
+- **Features implemented:** Added the core-document SSE endpoint, Ollama NDJSON streaming, deterministic mock chunking, streaming execution persistence, EventSource workspace rendering with live Markdown/cursor states, sequential document streams, extracted `BlueprintCard`, premium hero/metrics styling, canonical tags, global mutation synchronization, and confirmed concurrent bulk deletion.
+- **Reliability correction:** Blueprint delete and tag mutations already reached the API/repository but could reappear after navigation because Dashboard-local state was not synchronized with App-level blueprint state. Successful server mutations now update the authoritative client list, and repository/API tests cover canonical tags and cascading deletion.
+- **Verification:** Production build and non-database focused tests passed. Database-backed tests remain blocked by the existing `better-sqlite3` ABI mismatch: installed module ABI 127 versus the current Node runtime ABI 147.
+
+## 2026-07-18 — v1.0.0 Vault Architect final polish
+
+- **Origin and human decisions:** Finalized the Vault Architect persona and local-first presentation for release. The release version is `1.0.0`; cover art is intentionally browser-local rather than a server persistence feature; release handoff is a local commit, annotated tag, and merge to `main` without a remote push.
+- **Features implemented:** Added the primary seven-message thought cycle and secondary encouragement cycle with explicit timer cleanup; replaced workspace generation spinners with fading persona status text; authored the `THE VAULT ARCHITECT` masthead and dynamic provider status ribbon; added IndexedDB cover storage with PNG/JPEG/WebP validation, browser resizing, URL cleanup, glassmorphism overlays, and accessible card menu actions; bumped workspace packages to `1.0.0`.
+- **Architecture boundary:** Cover blobs remain outside the API, SQLite repository, provider prompts, and exports. SSE remains the sole live generation transport and completed documents remain the only persisted stream result.
+- **Verification results:** Focused rendering, API-client, export, and provider tests passed with 4 files and 19 tests. `npm run typecheck`, `npm run build`, and `git diff --check` passed. The full suite reached 18 files and 79 tests: 58 passed and 21 database-backed tests failed before execution because the installed `better-sqlite3` binary uses Node ABI 127 while the active runtime requires ABI 147. Tests were not weakened.
+
 ## 2026-07-15 — Repository foundation
 
 - **Codex model used:** Codex runtime; exact model identifier is not exposed in this workspace.
@@ -156,4 +170,124 @@
 - **Evidence:** [`docs/reports/entire-workflow-report.md`](docs/reports/entire-workflow-report.md) records all 23 requests, response summaries, HTTP statuses, and per-handler durations.
 - **Result:** PASS; 23 requests completed with a summed handler duration of 134.76 ms in the recorded run. The repeatable runner is [`scripts/run-entire-workflow-report.ts`](scripts/run-entire-workflow-report.ts).
 
+## 2026-07-18 — Vault Prompt operating guide
+
+- **Origin and decision:** Consolidated the project architecture, authority model, workflow, demo story, resources, commands, and known limitations into `docs/RUN.md` as the reusable governing prompt for future project work.
+- **Documentation implemented:** Added copy-ready model instructions, repeatable brief-to-verification workflow, supported generator inventory, provider and security boundaries, resource map, API/setup references, request template, output contract, and definition of done.
+- **Truthfulness safeguards:** Documented the current mutable blueprint persistence model, execution-level verification storage, incomplete artifact-level authorization provenance, provider compatibility paths, and environment-dependent Ollama behavior rather than presenting planned capabilities as implemented facts.
+- **Verification:** Confirmed the document is present, structurally complete, and no application code was changed.
+
+## 2026-07-18 — Documentation consolidation
+
+- **Decision:** Established a formal documentation hierarchy with `docs/README.md` as the index and three canonical documents: `architecture.md`, `development-plan.md`, and `demo-script.md`.
+- **Consolidation:** Merged overlapping architecture, system-design, enrichment, MVP, demo, and Stage 6 planning material into the canonical documents. Preserved historical paths as compatibility pages so existing links remain valid.
+- **Truthfulness:** Reconciled documented intent with current code by explicitly recording mutable blueprint persistence, execution-level verification notes, incomplete standalone execution provenance, provider compatibility paths, and the current approval model as hardening gaps.
+- **Verification:** Relative Markdown link audit found no missing targets; `git diff --check` passed with only existing LF/CRLF conversion warnings.
+
+### Milestone 1: Multi-Document Workspace and Isolated Rerolls
+
+* **Date:** 2026-07-18
+* **Model Used:** AI Assistant (Gemini) paired with user instructions; DeepSeek/Phi4-mini targeted for local generation.
+* **Repository State:** Database layer updated with additive SQLite columns to support prompt/document metadata and source execution linkage. Generated documents are treated strictly as artifacts and are not committed to the repository codebase.
+* **Major Decisions:**
+  * Extended the PRD workflow into a bounded multi-document workspace.
+  * The completed PRD remains the immutable source context.
+  * Each requested core document receives an independent prompt and execution record.
+* **Implemented Features:**
+  * Codex-ready context blocks and README-style compile summary.
+  * Selectable core-document generation matrix.
+  * Dedicated workspace route (`#/blueprints/:id/workspace`) with Markdown preview.
+  * Per-document status indicators.
+  * Client-side Markdown and ZIP batch export.
+  * Isolated document reroll API endpoint (`POST /api/blueprints/:id/reroll-doc`).
+* **Human Decisions:** Initiated the shift from a single-pane form to a comprehensive multi-document engineering workspace.
+* **AI Contributions:** Designed the API contracts, structured the prompt context blocks for token efficiency, and implemented the React UI layout and routing logic for the new workspace.
+* **Verification Results:** `npm run typecheck` and production build passed.
+* **Follow-up Risks or Approvals Required:** Focused and full test suites are blocked by a `better-sqlite3` native module ABI mismatch. Tests must be rerun after successfully rebuilding the dependency for the current Node runtime.
+
+---
+
+### Milestone 2: Workspace Demo State and HITL Editing
+
+* **Date:** 2026-07-18
+* **Model Used:** AI Assistant (Gemini).
+* **Repository State:** UI state management expanded to handle asynchronous batch processing. Prompt registry updated to enforce strict context embedding.
+* **Major Decisions:**
+  * Batch generation immediately routes the user to the workspace to view live progress via polling.
+  * Human-in-the-Loop (HITL) editing implemented, preserving local edits per document across tab switches and exports.
+  * Reroll prompts explicitly label the completed PRD text as `PRIMARY SYSTEM CONTEXT: PRD.md` to ensure architectural alignment.
+* **Implemented Features:**
+  * Immediate workspace transition with live execution polling.
+  * Sidebar spinners and center-pane skeleton loaders for actively generating files.
+  * Partial failure recovery with red error states and a `Retry Document` boundary.
+  * Edit/Preview toggle for raw markdown manipulation.
+  * Workspace breadcrumb navigation.
+* **Human Decisions:** Requested a robust UX for the dashboard → prompt → execution → verification demo loop, explicitly calling out the need for loading states, failure fallbacks, and manual edit capabilities.
+* **AI Contributions:** Engineered the React state management for asynchronous polling, built the fail-safe error boundaries, and integrated the editable `<textarea>` / markdown preview toggle.
+* **Verification Results:** `npm run typecheck`, `npm run build`, and focused UI/prompt tests (7 tests) passed.
+* **Follow-up Risks or Approvals Required:** `npm test` and `npm run seed:demo` remain completely blocked. Node 26 lacks a prebuilt binary for `better-sqlite3`, and local rebuild attempts failed due to a Windows `EPERM` file lock on the `.node` module. The zombie Node process holding the lock must be killed (`taskkill /F /IM node.exe`) before the native module can be rebuilt and the live demo can proceed.
+
 For each meaningful milestone, record the date, model used, repository state, major decisions, implemented features, human decisions, AI contributions, verification results, and any follow-up risks or approvals required.
+
+---
+
+### Milestone 3: Dashboard Organization and Vault Management
+
+* **Date:** 2026-07-18
+* **Model Used:** Antigravity (Gemini).
+* **Repository State:** SQLite repository updated with `tags_json` column and blueprint deletion SQL queries. Fastify API routes added for PATCH, DELETE, and bulk deletion. Client helper library and vitest suites verified.
+* **Major Decisions:**
+  * Implemented an interactive inline tag manager (+ Tag creation, delete pill tag, filter pill filters) on the dashboard without modal complexity.
+  * Added inline title renaming and red confirmation deletion triggers on cards to minimize layout friction.
+  * Integrated a checkmark overlay selection mode for bulk vault actions (Zip archive download of markdown packages and bulk deletion).
+* **Implemented Features:**
+  * Horizontally scrolling, multi-select tag filter bar.
+  * Contextual kebab action menus on card hover.
+  * Inline rename fields and confirmation states.
+  * "Manage Vault" bulk checkbox mode.
+  * Bottom floating action bar showing active selections.
+  * Client-side zip generation of selected blueprints as individual Markdown specs.
+  * API endpoints: `PATCH /api/blueprints/:id`, `DELETE /api/blueprints/:id`, and `POST /api/blueprints/bulk-delete`.
+* **Human Decisions:** Requested a premium dashboard UI refresh to support organization, tagging, and bulk operations.
+* **AI Contributions:** Fully implemented the Fastify router handlers, SQLite repository deletion queries, React dashboard tag filtering, bulk selection states, zip generator calls, and fixed the parsed Zod blueprint validation test suite.
+* **Verification Results:** All **73 test cases passed successfully** under Node v22. `npm run typecheck` and `git diff --check` passed.
+
+---
+
+### Milestone 4: Bulk Actions Execution & Interactive Labeling
+
+* **Date:** 2026-07-18
+* **Model Used:** Antigravity (Gemini).
+* **Repository State:** Client codebases updated to utilize `jszip` and `file-saver` for packaging. Dashboard components wired to execute API mutations concurrently.
+* **Major Decisions:**
+  * Enabled asynchronous multi-workspace ZIP construction (`jszip`) fetching complete project document histories in the background.
+  * Added floating bulk labeling dialog input with concurrent patch executions.
+  * Implemented instant UI feedback with auto-dismissing toast confirmations and optimistic local state filtering.
+* **Implemented Features:**
+  * Bulk Delete Execution with local React state filtering.
+  * Bulk ZIP Export (`exportBulkBlueprintsAsZip`) with folder structural mapping.
+  * Interactive Labeling System (+ inline tag inputs on Enter and x pill removal).
+  * Bulk Labeling floating bar popover input.
+* **Human Decisions:** Approved the use of `jszip` and `file-saver` to bundle entire project artifacts during bulk export.
+* **AI Contributions:** Integrated JSZip packaging logic, wired the asynchronous React event handlers, implemented toast notifications, and set up type definitions.
+* **Verification Results:** All **73 test cases passed successfully**. `npm run typecheck` and workspace builds verified.
+
+---
+
+### Milestone 5: Local File System Sync & Edit State Management
+
+* **Date:** 2026-07-18
+* **Model Used:** Antigravity (Gemini).
+* **Repository State:** Fastify server updated to write directly to disk paths. Workspace UI wired to handle in-memory document state modification and tab guards.
+* **Major Decisions:**
+  * Implemented path traversal validation on `/api/blueprints/:id/sync-to-disk` for security.
+  * Added uncommitted "dirty" indicator logic (orange dot) next to modified workspace documents.
+  * Introduced tab guards intercepting sidebar switches while edits are uncommitted.
+* **Implemented Features:**
+  * `/api/blueprints/:id/sync-to-disk` endpoint for writing folders recursively.
+  * "Sync to Local Folder ↘" header button, folder sync modal, and localStorage path retention.
+  * "Save Changes" and "Discard" controls replacing export buttons on uncommitted modifications.
+  * Tab Switch Guard prompting window confirm triggers.
+* **Human Decisions:** Requested a premium direct-disk sync mechanism and explicit save/discard workflows.
+* **AI Contributions:** Implemented file system write controllers, added localStorage hooks, built React uncommitted change state logic, and updated typescript definitions.
+* **Verification Results:** All **73 test cases passed successfully**. `npm run typecheck` and `git diff --check` passed.

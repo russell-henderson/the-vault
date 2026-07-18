@@ -7,7 +7,7 @@ const validBlueprint = {
 };
 
 describe("blueprint validation", () => {
-  it("accepts a complete blueprint", () => expect(blueprintInputSchema.parse(validBlueprint)).toEqual(validBlueprint));
+  it("accepts a complete blueprint", () => expect(blueprintInputSchema.parse(validBlueprint)).toEqual({ ...validBlueprint, tags: [] }));
   it("rejects missing required architecture fields", () => {
     const result = blueprintInputSchema.safeParse({ ...validBlueprint, coreLogic: "" });
     expect(result.success).toBe(false);

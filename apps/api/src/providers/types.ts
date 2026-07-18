@@ -2,7 +2,7 @@ import type { ArchitectureSynthesisContext, AuthorizedSynthesisContext, Blueprin
 
 export type ProviderValidation = { valid: boolean; issues: string[] };
 
-export type AiGenerateRequest = { prompt: string; executionId: string };
+export type AiGenerateRequest = { prompt: string; executionId: string; signal?: AbortSignal };
 export type AiGenerateResult = { output: string; artifactType: string; artifactLocation?: string; metadata?: ProviderMetadata };
 export type BlueprintGenerateRequest = { brief?: string; confirmedBrief?: string; instruction?: string; generatorId?: string; synthesisContext?: ArchitectureSynthesisContext; authorizedContext?: AuthorizedSynthesisContext };
 export type BlueprintGenerateResult = { proposal: BlueprintProposal; metadata: ProviderMetadata };
@@ -12,6 +12,7 @@ export type ProviderHealth = { available: boolean; detail: string; model?: strin
 
 export interface AiProvider {
   readonly name: string;
+  readonly model?: string;
   validate(prompt: string): Promise<ProviderValidation>;
   generate(request: AiGenerateRequest): Promise<AiGenerateResult>;
   stream(request: AiGenerateRequest): AsyncIterable<string>;

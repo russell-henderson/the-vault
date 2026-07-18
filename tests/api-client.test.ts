@@ -18,4 +18,12 @@ describe("web API client", () => {
     expect(fetchMock).toHaveBeenCalled();
     fetchMock.mockRestore();
   });
+
+  it("sends the selected document filter to the workspace generation endpoint", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ workspace: {}, executions: [] }), { status: 201, headers: { "content-type": "application/json" } }));
+    await api.generateCoreDocs("blueprint-1", ["README.md", "API.md"], { provider: "mock", model: "deterministic-local" });
+    const [, options] = fetchMock.mock.calls[0] ?? [];
+    expect(JSON.parse(String(options?.body))).toEqual({ requestedFiles: ["README.md", "API.md"], creation: { provider: "mock", model: "deterministic-local" } });
+    fetchMock.mockRestore();
+  });
 });

@@ -135,4 +135,109 @@ describe("blueprint API workflow", () => {
     expect(repository.listBlueprints()).toHaveLength(0);
     await app.close();
   });
+
+  it("handles the two-stage PRD and Core Documentation generation workflow", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+    const created = await app.inject({ method: "POST", url: "/api/blueprints", payload: blueprint });
+    const blueprintId = created.json<{ id: string }>().id;
+
+    // Stage 2 should fail initially because PRD has not been generated/completed
+    const earlyCoreDocs = await app.inject({ method: "POST", url: `/api/blueprints/${blueprintId}/generate-core-docs`, payload: { creation: { provider: "mock", model: "deterministic-local" } } });
+    expect(earlyCoreDocs.statusCode).toBe(400);
+    expect(earlyCoreDocs.json<{ error: string }>().error).toContain("No completed PRD generation found");
+
+    // Stage 1: Generate PRD prompt
+    const promptGen = await app.inject({ method: "POST", url: `/api/blueprints/${blueprintId}/generate-prompt` });
+    expect(promptGen.statusCode).toBe(201);
+    const prdResult = promptGen.json<{ promptArtifact: { id: string }; executionRecord: { id: string } }>();
+
+    // Execute PRD prompt
+    const prdLaunch = await app.inject({ method: "POST", url: "/api/executions", payload: { promptArtifactId: prdResult.promptArtifact.id, provider: "mock" } });
+    expect(prdLaunch.statusCode).toBe(201);
+    const completedPrd = prdLaunch.json<{ artifactType: string; status: string; generatedOutput: string }>();
+    expect(completedPrd.status).toBe("completed");
+    expect(completedPrd.artifactType).toBe("PRD");
+
+    // Stage 2: Generate Core Docs
+    const coreDocsLaunch = await app.inject({ method: "POST", url: `/api/blueprints/${blueprintId}/generate-core-docs`, payload: { requestedFiles: ["README.md", "ARCHITECTURE.md"], creation: { provider: "mock", model: "deterministic-local" } } });
+    expect(coreDocsLaunch.statusCode).toBe(201);
+    const completedCoreDocs = coreDocsLaunch.json<{ executions: Array<{ artifactType: string; status: string; documentFilename?: string }>; workspace: { documents: Array<{ filename: string; status: string }> } }>();
+    expect(completedCoreDocs.executions).toHaveLength(2);
+    expect(completedCoreDocs.executions.every((execution) => execution.status === "completed" && execution.artifactType === "Core Documentation")).toBe(true);
+    expect(completedCoreDocs.executions.map((execution) => execution.documentFilename)).toEqual(["README.md", "ARCHITECTURE.md"]);
+    expect(completedCoreDocs.workspace.documents.find((document) => document.filename === "API.md")?.status).toBe("pending");
+
+    const workspace = await app.inject({ method: "GET", url: `/api/blueprints/${blueprintId}/workspace` });
+    expect(workspace.statusCode).toBe(200);
+    expect(workspace.json<{ prdExecutionId: string | null }>().prdExecutionId).toBeTruthy();
+
+    const reroll = await app.inject({ method: "POST", url: `/api/blueprints/${blueprintId}/reroll-doc`, payload: { filename: "ARCHITECTURE.md", creation: { provider: "mock", model: "deterministic-local" } } });
+    expect(reroll.statusCode).toBe(201);
+    const rerollResult = reroll.json<{ execution: { documentFilename?: string; sourceExecutionId?: string; promptArtifactId: string } }>();
+    expect(rerollResult.execution).toMatchObject({ documentFilename: "ARCHITECTURE.md", sourceExecutionId: expect.any(String) });
+    expect(repository.getPromptArtifact(rerollResult.execution.promptArtifactId)?.generatedPrompt).toContain("PRIMARY SYSTEM CONTEXT: PRD.md");
+    expect(repository.getPromptArtifact(rerollResult.execution.promptArtifactId)?.generatedPrompt).toContain(completedPrd.generatedOutput);
+
+    const invalidFilter = await app.inject({ method: "POST", url: `/api/blueprints/${blueprintId}/generate-core-docs`, payload: { requestedFiles: ["README.md", "README.md"] } });
+    expect(invalidFilter.statusCode).toBe(400);
+
+    await app.close();
+  });
+
+  it("streams a core document over SSE and persists the completed artifact", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+    const created = await app.inject({ method: "POST", url: "/api/blueprints", payload: blueprint });
+    const blueprintId = created.json<{ id: string }>().id;
+    const promptGen = await app.inject({ method: "POST", url: `/api/blueprints/${blueprintId}/generate-prompt` });
+    const promptId = promptGen.json<{ promptArtifact: { id: string } }>().promptArtifact.id;
+    await app.inject({ method: "POST", url: "/api/executions", payload: { promptArtifactId: promptId, provider: "mock" } });
+
+    const stream = await app.inject({ method: "GET", url: `/api/blueprints/${blueprintId}/generate/stream?filename=README.md&provider=mock&model=deterministic-local` });
+    expect(stream.statusCode).toBe(200);
+    expect(stream.headers["content-type"]).toContain("text/event-stream");
+    expect(stream.body).toContain('"chunk"');
+    expect(stream.body).toContain('"status":"DONE"');
+    const workspace = repository.listExecutionRecords(blueprintId).find((record) => record.documentFilename === "README.md");
+    expect(workspace?.status).toBe("completed");
+    expect(workspace?.generatedOutput).toContain("Mock Codex Result");
+    await app.close();
+  });
+
+  it("persists tag mutations and deletes blueprints through the API", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+    const created = await app.inject({ method: "POST", url: "/api/blueprints", payload: blueprint });
+    const blueprintId = created.json<{ id: string }>().id;
+    const patched = await app.inject({ method: "PATCH", url: `/api/blueprints/${blueprintId}`, payload: { tags: [" Product Design ", "product_design"] } });
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json<{ tags: string[] }>().tags).toEqual(["product-design"]);
+    const deleted = await app.inject({ method: "DELETE", url: `/api/blueprints/${blueprintId}` });
+    expect(deleted.statusCode).toBe(200);
+    expect((await app.inject({ method: "GET", url: `/api/blueprints/${blueprintId}` })).statusCode).toBe(404);
+    expect(repository.listBlueprints()).toHaveLength(0);
+    await app.close();
+  });
+
+  it("extrapolates project blueprint fields from description", async () => {
+    const repository = new VaultRepository(":memory:");
+    const app = buildApp(repository);
+
+    // Test missing description
+    const badRes = await app.inject({ method: "POST", url: "/api/blueprints/extrapolate", payload: { description: "" } });
+    expect(badRes.statusCode).toBe(400);
+
+    const goodRes = await app.inject({
+      method: "POST",
+      url: "/api/blueprints/extrapolate",
+      payload: { description: "Build a Node/Fastify API that uses SQLite and has user auth.", creation: { provider: "mock", model: "deterministic-local" } }
+    });
+    expect(goodRes.statusCode).toBe(200);
+    const data = goodRes.json<{ projectName: string; architectureOverview: string; coreLogic: string; dependencies: string[]; technicalConstraints: string[]; comments: string[] }>();
+    expect(data.projectName).toBe("Mocked Saas App");
+    expect(data.dependencies).toContain("fastify");
+
+    await app.close();
+  });
 });

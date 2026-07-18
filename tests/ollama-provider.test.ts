@@ -100,4 +100,21 @@ describe("Ollama provider", () => {
     expect(catalog.models.find((model) => model.provider === "mock")?.available).toBe(true);
     fetchMock.mockRestore();
   });
+
+  it("streams Ollama NDJSON chunks with stream enabled", async () => {
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"response":"Hello "}\n{"response":"world"}\n'));
+        controller.close();
+      }
+    });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(body, { status: 200 }));
+    const provider = new OllamaAiProvider("http://ollama.test", "analysis-model", "creation-model");
+    const chunks: string[] = [];
+    for await (const chunk of provider.stream({ prompt: "Create docs", executionId: "execution-1" })) chunks.push(chunk);
+    expect(chunks).toEqual(["Hello ", "world"]);
+    const request = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body)) as { model: string; stream: boolean };
+    expect(request).toEqual({ model: "creation-model", prompt: "Create docs", stream: true });
+    fetchMock.mockRestore();
+  });
 });

@@ -6,6 +6,13 @@ import { BriefComposer } from "../components/BriefComposer";
 
 export function BlueprintCreate({ onSubmit, onCancel, providerStatus, catalog, catalogLoading, onRefreshCatalog }: { onSubmit: (input: BlueprintInput) => Promise<void>; onCancel: () => void; providerStatus?: ProviderStatus; catalog?: ProviderCatalog; catalogLoading: boolean; onRefreshCatalog: () => Promise<boolean> }) {
   const [manual, setManual] = useState(false);
+  const [initialBrief, setInitialBrief] = useState("");
+  const [autoFillOnEntry, setAutoFillOnEntry] = useState(false);
   async function approve(proposal: BlueprintProposal) { await onSubmit(proposal.blueprint); }
-  return <><div className="mb-8"><button className="back-link" onClick={onCancel}>← Back to blueprints</button><p className="eyebrow mt-8">Step 1 · Human intent</p><h1 className="page-title">Shape the work before it ships.</h1><p className="page-subtitle">Start with a brief and let local AI organize the architecture, or author every field yourself. Nothing executes until you review and approve the handoff.</p></div>{manual ? <BlueprintForm onSubmit={onSubmit} onCancel={onCancel} /> : <BriefComposer providerStatus={providerStatus} catalog={catalog} catalogLoading={catalogLoading} onRefreshCatalog={onRefreshCatalog} onApprove={approve} onManual={() => setManual(true)} onCancel={onCancel} />}</>;
+  function handleManual(brief?: string, autoFill?: boolean) {
+    if (brief) setInitialBrief(brief);
+    if (autoFill) setAutoFillOnEntry(true);
+    setManual(true);
+  }
+  return <><div className="mb-8"><button className="back-link" onClick={onCancel}>← Back to blueprints</button><p className="eyebrow mt-8">Step 1 · Human intent</p><h1 className="page-title">Shape the work before it ships.</h1><p className="page-subtitle">Start with a brief and let local AI organize the architecture, or author every field yourself. Nothing executes until you review and approve the handoff.</p></div>{manual ? <BlueprintForm onSubmit={onSubmit} onCancel={onCancel} initialBrief={initialBrief} autoFillOnEntry={autoFillOnEntry} /> : <BriefComposer providerStatus={providerStatus} catalog={catalog} catalogLoading={catalogLoading} onRefreshCatalog={onRefreshCatalog} onApprove={approve} onManual={handleManual} onCancel={onCancel} />}</>;
 }

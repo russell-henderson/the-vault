@@ -176,6 +176,7 @@ export class OllamaAiProvider implements AiProvider {
   readonly baseUrl: string;
   readonly analysisModel: string;
   readonly creationModel: string;
+  get model(): string { return this.creationModel; }
 
   constructor(baseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434", analysisModel = process.env.OLLAMA_ANALYSIS_MODEL ?? process.env.OLLAMA_MODEL ?? "llama3.2:3b", creationModel = process.env.OLLAMA_CREATION_MODEL ?? process.env.OLLAMA_MODEL ?? "dolphin3:8b") {
     this.baseUrl = baseUrl.replace(/\/$/, "");
@@ -217,7 +218,52 @@ export class OllamaAiProvider implements AiProvider {
   }
 
   async *stream(request: AiGenerateRequest): AsyncIterable<string> {
-    yield (await this.generate(request)).output;
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/api/generate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model: this.creationModel, prompt: request.prompt, stream: true }),
+        signal: request.signal
+      });
+    } catch (error) {
+      if (request.signal?.aborted) throw new Error("Generation cancelled by client");
+      throw new Error(`Unable to reach Ollama at ${this.baseUrl}`);
+    }
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({})) as OllamaResponse;
+      throw new Error(body.error ?? `Ollama returned HTTP ${response.status}`);
+    }
+    if (!response.body) throw new Error("Ollama returned an empty streaming response");
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          const payload = JSON.parse(trimmed) as OllamaResponse;
+          if (payload.error) throw new Error(payload.error);
+          if (payload.response) yield payload.response;
+        }
+        if (done) break;
+      }
+      const trailing = buffer.trim();
+      if (trailing) {
+        const payload = JSON.parse(trailing) as OllamaResponse;
+        if (payload.error) throw new Error(payload.error);
+        if (payload.response) yield payload.response;
+      }
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   async health() {

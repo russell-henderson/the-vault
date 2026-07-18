@@ -1,20 +1,21 @@
-import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
-import { dirname } from "node:path";
-import { mkdirSync } from "node:fs";
-import type { ArchitecturePacket, Blueprint, BlueprintInput, ExecutionRecord, ImplementationPlan, PromptArtifact, ProviderMetadata } from "@the-vault/shared";
+import Database from "better-sqlite3";
+import { normalizeTag, type Blueprint, type BlueprintInput, type PromptArtifact, type ExecutionRecord, type ProviderMetadata, type ImplementationPlan, type ArchitecturePacket, type WorkspaceDocumentFilename, type PromptKind } from "@the-vault/shared";
 
 type BlueprintRow = Blueprint;
 type PromptRow = PromptArtifact;
 type ExecutionRow = ExecutionRecord;
 
-export class VaultRepository {
-  private readonly db: Database.Database;
+function canonicalTags(tags: string[] | undefined): string[] {
+  return Array.from(new Set((tags ?? []).map(normalizeTag).filter(Boolean))).slice(0, 20);
+}
 
-  constructor(databasePath = process.env.VAULT_DATABASE_PATH ?? "apps/api/data/vault.db") {
-    if (databasePath !== ":memory:") mkdirSync(dirname(databasePath), { recursive: true });
-    this.db = new Database(databasePath);
-    this.db.pragma("foreign_keys = ON");
+export class VaultRepository {
+  private db: Database.Database;
+
+  constructor(dbPath: string) {
+    this.db = new Database(dbPath);
+    this.db.exec("PRAGMA foreign_keys = ON");
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS blueprints (
         id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
@@ -27,28 +28,33 @@ export class VaultRepository {
       CREATE TABLE IF NOT EXISTS prompt_artifacts (
         id TEXT PRIMARY KEY, blueprint_id TEXT NOT NULL, generated_prompt TEXT NOT NULL,
         version INTEGER NOT NULL, created_at TEXT NOT NULL,
-        FOREIGN KEY (blueprint_id) REFERENCES blueprints(id) ON DELETE CASCADE
+        FOREIGN KEY(blueprint_id) REFERENCES blueprints(id) ON DELETE CASCADE
       );
       CREATE TABLE IF NOT EXISTS execution_records (
         id TEXT PRIMARY KEY, blueprint_id TEXT NOT NULL, prompt_artifact_id TEXT NOT NULL,
-        status TEXT NOT NULL, input_prompt TEXT NOT NULL DEFAULT '', generated_output TEXT NOT NULL DEFAULT '',
-        artifact_type TEXT NOT NULL DEFAULT '', artifact_location TEXT NOT NULL DEFAULT '', output_location TEXT NOT NULL DEFAULT '',
-        verification_notes TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, started_at TEXT, completed_at TEXT,
-        provider_name TEXT, provider_model TEXT, provider_fallback INTEGER NOT NULL DEFAULT 0, provider_message TEXT, provider_duration_ms INTEGER,
-        FOREIGN KEY (blueprint_id) REFERENCES blueprints(id) ON DELETE CASCADE,
-        FOREIGN KEY (prompt_artifact_id) REFERENCES prompt_artifacts(id) ON DELETE CASCADE
+        status TEXT NOT NULL, input_prompt TEXT NOT NULL, generated_output TEXT NOT NULL,
+        artifact_type TEXT NOT NULL, artifact_location TEXT NOT NULL, output_location TEXT NOT NULL,
+        verification_notes TEXT NOT NULL, created_at TEXT NOT NULL, started_at TEXT, completed_at TEXT,
+        FOREIGN KEY(blueprint_id) REFERENCES blueprints(id) ON DELETE CASCADE,
+        FOREIGN KEY(prompt_artifact_id) REFERENCES prompt_artifacts(id) ON DELETE CASCADE
       );
     `);
-    this.ensureColumn("execution_records", "input_prompt", "TEXT NOT NULL DEFAULT ''");
-    this.ensureColumn("execution_records", "generated_output", "TEXT NOT NULL DEFAULT ''");
-    this.ensureColumn("execution_records", "artifact_type", "TEXT NOT NULL DEFAULT ''");
-    this.ensureColumn("execution_records", "artifact_location", "TEXT NOT NULL DEFAULT ''");
-    this.ensureColumn("execution_records", "started_at", "TEXT");
-    this.ensureColumn("execution_records", "completed_at", "TEXT");
     this.ensureColumn("blueprints", "implementation_plan_json", "TEXT NOT NULL DEFAULT ''");
     this.ensureColumn("blueprints", "architecture_packet_json", "TEXT NOT NULL DEFAULT ''");
     this.ensureColumn("blueprints", "source", "TEXT NOT NULL DEFAULT 'human'");
     this.ensureColumn("blueprints", "source_brief", "TEXT NOT NULL DEFAULT ''");
+    this.ensureColumn("blueprints", "technical_constraints_json", "TEXT NOT NULL DEFAULT '[]'");
+    this.ensureColumn("blueprints", "tags_json", "TEXT NOT NULL DEFAULT '[]'");
+    this.ensureColumn("prompt_artifacts", "kind", "TEXT");
+    this.ensureColumn("prompt_artifacts", "document_filename", "TEXT");
+    this.ensureColumn("prompt_artifacts", "source_execution_id", "TEXT");
+    this.ensureColumn("prompt_artifacts", "context_summary", "TEXT NOT NULL DEFAULT ''");
+    this.ensureColumn("execution_records", "document_filename", "TEXT");
+    this.ensureColumn("execution_records", "source_execution_id", "TEXT");
+    this.ensureColumn("execution_records", "artifact_type", "TEXT NOT NULL DEFAULT ''");
+    this.ensureColumn("execution_records", "artifact_location", "TEXT NOT NULL DEFAULT ''");
+    this.ensureColumn("execution_records", "started_at", "TEXT");
+    this.ensureColumn("execution_records", "completed_at", "TEXT");
     this.ensureColumn("execution_records", "provider_name", "TEXT");
     this.ensureColumn("execution_records", "provider_model", "TEXT");
     this.ensureColumn("execution_records", "provider_fallback", "INTEGER NOT NULL DEFAULT 0");
@@ -58,18 +64,31 @@ export class VaultRepository {
 
   createBlueprint(input: BlueprintInput): Blueprint {
     const now = new Date().toISOString();
-    const blueprint: Blueprint = { ...input, id: randomUUID(), createdAt: now, updatedAt: now };
+    const blueprint: Blueprint = { ...input, tags: canonicalTags(input.tags), id: randomUUID(), createdAt: now, updatedAt: now };
     this.db.prepare(`INSERT INTO blueprints
-      (id,name,description,target_path,language,framework,dependencies_json,architecture_overview,core_logic,layout_design,constraints_json,implementation_plan_json,architecture_packet_json,source,source_brief,created_at,updated_at)
-      VALUES (@id,@name,@description,@targetPath,@language,@framework,@dependencies,@architectureOverview,@coreLogic,@layoutDesign,@constraints,@implementationPlan,@architecturePacket,@source,@sourceBrief,@createdAt,@updatedAt)`)
-      .run({ ...blueprint, dependencies: JSON.stringify(blueprint.dependencies), constraints: JSON.stringify(blueprint.constraints), implementationPlan: blueprint.implementationPlan ? JSON.stringify(blueprint.implementationPlan) : "", architecturePacket: blueprint.architecturePacket ? JSON.stringify(blueprint.architecturePacket) : "", source: blueprint.source ?? "human", sourceBrief: blueprint.sourceBrief ?? "" });
+      (id,name,description,target_path,language,framework,dependencies_json,architecture_overview,core_logic,layout_design,constraints_json,technical_constraints_json,tags_json,implementation_plan_json,architecture_packet_json,source,source_brief,created_at,updated_at)
+      VALUES (@id,@name,@description,@targetPath,@language,@framework,@dependencies,@architectureOverview,@coreLogic,@layoutDesign,@constraints,@technicalConstraints,@tags,@implementationPlan,@architecturePacket,@source,@sourceBrief,@createdAt,@updatedAt)`)
+      .run({ ...blueprint, dependencies: JSON.stringify(blueprint.dependencies), constraints: JSON.stringify(blueprint.constraints), technicalConstraints: JSON.stringify(blueprint.technicalConstraints || []), tags: JSON.stringify(blueprint.tags || []), implementationPlan: blueprint.implementationPlan ? JSON.stringify(blueprint.implementationPlan) : "", architecturePacket: blueprint.architecturePacket ? JSON.stringify(blueprint.architecturePacket) : "", source: blueprint.source ?? "human", sourceBrief: blueprint.sourceBrief ?? "" });
     return blueprint;
   }
 
   updateBlueprint(id: string, input: BlueprintInput): Blueprint | undefined {
     const updatedAt = new Date().toISOString();
-    this.db.prepare(`UPDATE blueprints SET name=@name, description=@description, target_path=@targetPath, language=@language, framework=@framework, dependencies_json=@dependencies, architecture_overview=@architectureOverview, core_logic=@coreLogic, layout_design=@layoutDesign, constraints_json=@constraints, implementation_plan_json=@implementationPlan, architecture_packet_json=@architecturePacket, source=@source, source_brief=@sourceBrief, updated_at=@updatedAt WHERE id=@id`).run({ id, ...input, dependencies: JSON.stringify(input.dependencies), constraints: JSON.stringify(input.constraints), implementationPlan: input.implementationPlan ? JSON.stringify(input.implementationPlan) : "", architecturePacket: input.architecturePacket ? JSON.stringify(input.architecturePacket) : "", source: input.source ?? "human", sourceBrief: input.sourceBrief ?? "", updatedAt });
+    const canonicalInput = { ...input, tags: canonicalTags(input.tags) };
+    this.db.prepare(`UPDATE blueprints SET name=@name, description=@description, target_path=@targetPath, language=@language, framework=@framework, dependencies_json=@dependencies, architecture_overview=@architectureOverview, core_logic=@coreLogic, layout_design=@layoutDesign, constraints_json=@constraints, technical_constraints_json=@technicalConstraints, tags_json=@tags, implementation_plan_json=@implementationPlan, architecture_packet_json=@architecturePacket, source=@source, source_brief=@sourceBrief, updated_at=@updatedAt WHERE id=@id`).run({ id, ...canonicalInput, dependencies: JSON.stringify(input.dependencies), constraints: JSON.stringify(input.constraints), technicalConstraints: JSON.stringify(input.technicalConstraints || []), tags: JSON.stringify(canonicalInput.tags), implementationPlan: input.implementationPlan ? JSON.stringify(input.implementationPlan) : "", architecturePacket: input.architecturePacket ? JSON.stringify(input.architecturePacket) : "", source: input.source ?? "human", sourceBrief: input.sourceBrief ?? "", updatedAt });
     return this.getBlueprint(id);
+  }
+
+  deleteBlueprint(id: string): boolean {
+    const result = this.db.prepare("DELETE FROM blueprints WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
+  bulkDeleteBlueprints(ids: string[]): number {
+    if (ids.length === 0) return 0;
+    const placeholders = ids.map(() => "?").join(",");
+    const result = this.db.prepare(`DELETE FROM blueprints WHERE id IN (${placeholders})`).run(...ids);
+    return result.changes;
   }
 
   listBlueprints(): Blueprint[] {
@@ -81,15 +100,17 @@ export class VaultRepository {
     return row ? this.mapBlueprint(row) : undefined;
   }
 
-  createPromptArtifact(blueprintId: string, generatedPrompt: string): PromptArtifact {
+  createPromptArtifact(blueprintId: string, generatedPrompt: string, metadata?: { kind?: "prd" | "core-document" | "implementation"; documentFilename?: string; sourceExecutionId?: string; contextSummary?: string }): PromptArtifact {
     const latest = this.db.prepare("SELECT MAX(version) as version FROM prompt_artifacts WHERE blueprint_id = ?").get(blueprintId) as { version: number | null };
-    const artifact: PromptArtifact = { id: randomUUID(), blueprintId, generatedPrompt, version: (latest.version ?? 0) + 1, createdAt: new Date().toISOString() };
-    this.db.prepare(`INSERT INTO prompt_artifacts (id,blueprint_id,generated_prompt,version,created_at) VALUES (?,?,?,?,?)`).run(artifact.id, artifact.blueprintId, artifact.generatedPrompt, artifact.version, artifact.createdAt);
+    const artifact: PromptArtifact = { id: randomUUID(), blueprintId, generatedPrompt, version: (latest.version ?? 0) + 1, createdAt: new Date().toISOString(), kind: metadata?.kind, documentFilename: metadata?.documentFilename as any, sourceExecutionId: metadata?.sourceExecutionId, contextSummary: metadata?.contextSummary };
+    this.db.prepare(`INSERT INTO prompt_artifacts (id,blueprint_id,generated_prompt,version,kind,document_filename,source_execution_id,context_summary,created_at) VALUES (?,?,?,?,?,?,?,?,?)`).run(artifact.id, artifact.blueprintId, artifact.generatedPrompt, artifact.version, artifact.kind ?? null, artifact.documentFilename ?? null, artifact.sourceExecutionId ?? null, artifact.contextSummary ?? "", artifact.createdAt);
     return artifact;
   }
 
-  getLatestPromptArtifact(blueprintId: string): PromptArtifact | undefined {
-    const row = this.db.prepare("SELECT * FROM prompt_artifacts WHERE blueprint_id = ? ORDER BY version DESC LIMIT 1").get(blueprintId) as Record<string, unknown> | undefined;
+  getLatestPromptArtifact(blueprintId: string, kind?: PromptKind): PromptArtifact | undefined {
+    const row = kind
+      ? this.db.prepare("SELECT * FROM prompt_artifacts WHERE blueprint_id = ? AND kind = ? ORDER BY version DESC LIMIT 1").get(blueprintId, kind) as Record<string, unknown> | undefined
+      : this.db.prepare("SELECT * FROM prompt_artifacts WHERE blueprint_id = ? ORDER BY version DESC LIMIT 1").get(blueprintId) as Record<string, unknown> | undefined;
     return row ? this.mapPrompt(row) : undefined;
   }
 
@@ -98,9 +119,9 @@ export class VaultRepository {
     return row ? this.mapPrompt(row) : undefined;
   }
 
-  createExecutionRecord(blueprintId: string, promptArtifactId: string, inputPrompt = ""): ExecutionRecord {
-    const record: ExecutionRecord = { id: randomUUID(), blueprintId, promptArtifactId, status: "pending", inputPrompt, generatedOutput: "", artifactType: "", artifactLocation: "", outputLocation: "", verificationNotes: "", createdAt: new Date().toISOString(), startedAt: null, completedAt: null };
-    this.db.prepare(`INSERT INTO execution_records (id,blueprint_id,prompt_artifact_id,status,input_prompt,generated_output,artifact_type,artifact_location,output_location,verification_notes,created_at,started_at,completed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(record.id, record.blueprintId, record.promptArtifactId, record.status, record.inputPrompt, record.generatedOutput, record.artifactType, record.artifactLocation, record.outputLocation, record.verificationNotes, record.createdAt, record.startedAt, record.completedAt);
+  createExecutionRecord(blueprintId: string, promptArtifactId: string, inputPrompt = "", options: { documentFilename?: WorkspaceDocumentFilename; sourceExecutionId?: string } = {}): ExecutionRecord {
+    const record: ExecutionRecord = { id: randomUUID(), blueprintId, promptArtifactId, status: "pending", inputPrompt, generatedOutput: "", artifactType: "", artifactLocation: "", outputLocation: "", verificationNotes: "", createdAt: new Date().toISOString(), startedAt: null, completedAt: null, ...options };
+    this.db.prepare(`INSERT INTO execution_records (id,blueprint_id,prompt_artifact_id,status,input_prompt,generated_output,artifact_type,artifact_location,output_location,verification_notes,document_filename,source_execution_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(record.id, record.blueprintId, record.promptArtifactId, record.status, record.inputPrompt, record.generatedOutput, record.artifactType, record.artifactLocation, record.outputLocation, record.verificationNotes, record.documentFilename ?? null, record.sourceExecutionId ?? null, record.createdAt);
     return record;
   }
 
@@ -109,8 +130,13 @@ export class VaultRepository {
     return this.getExecutionRecord(id);
   }
 
-  completeExecution(id: string, generatedOutput: string, artifactType: string, artifactLocation = "", completedAt = new Date().toISOString(), provider?: ProviderMetadata): ExecutionRecord | undefined {
-    this.db.prepare("UPDATE execution_records SET status = 'completed', generated_output = ?, artifact_type = ?, artifact_location = ?, output_location = ?, completed_at = ?, provider_name = ?, provider_model = ?, provider_fallback = ?, provider_message = ?, provider_duration_ms = ? WHERE id = ?").run(generatedOutput, artifactType, artifactLocation, artifactLocation, completedAt, provider?.name ?? null, provider?.model ?? null, provider?.fallback ? 1 : 0, provider?.message ?? null, provider?.durationMs ?? null, id);
+  completeExecution(id: string, generatedOutput: string, artifactType: string, artifactLocation = "", completedAt = new Date().toISOString(), provider?: ProviderMetadata, options: { documentFilename?: WorkspaceDocumentFilename; sourceExecutionId?: string } = {}): ExecutionRecord | undefined {
+    const providerName = provider?.name ?? null;
+    const providerModel = provider?.model ?? null;
+    const providerFallback = provider?.fallback ? 1 : 0;
+    const providerMessage = provider?.message ?? null;
+    const providerDuration = provider?.durationMs ?? null;
+    this.db.prepare("UPDATE execution_records SET status = 'completed', generated_output = ?, artifact_type = ?, artifact_location = ?, output_location = ?, completed_at = ?, provider_name = ?, provider_model = ?, provider_fallback = ?, provider_message = ?, provider_duration_ms = ?, document_filename = COALESCE(document_filename, ?), source_execution_id = COALESCE(source_execution_id, ?) WHERE id = ?").run(generatedOutput, artifactType, artifactLocation, artifactLocation, completedAt, providerName, providerModel, providerFallback, providerMessage, providerDuration, options.documentFilename ?? null, options.sourceExecutionId ?? null, id);
     return this.getExecutionRecord(id);
   }
 
@@ -124,13 +150,13 @@ export class VaultRepository {
     return this.getExecutionRecord(id);
   }
 
+  listExecutionRecords(blueprintId: string): ExecutionRecord[] {
+    return (this.db.prepare("SELECT * FROM execution_records WHERE blueprint_id = ? ORDER BY created_at DESC").all(blueprintId) as Record<string, unknown>[]).map((row) => this.mapExecution(row));
+  }
+
   getExecutionRecord(id: string): ExecutionRecord | undefined {
     const row = this.db.prepare("SELECT * FROM execution_records WHERE id = ?").get(id) as Record<string, unknown> | undefined;
     return row ? this.mapExecution(row) : undefined;
-  }
-
-  listExecutionRecords(blueprintId: string): ExecutionRecord[] {
-    return (this.db.prepare("SELECT * FROM execution_records WHERE blueprint_id = ? ORDER BY created_at DESC").all(blueprintId) as Record<string, unknown>[]).map((row) => this.mapExecution(row));
   }
 
   close(): void { this.db.close(); }
@@ -141,6 +167,8 @@ export class VaultRepository {
       language: String(row.language), framework: String(row.framework), dependencies: JSON.parse(String(row.dependencies_json)) as string[],
       architectureOverview: String(row.architecture_overview), coreLogic: String(row.core_logic), layoutDesign: String(row.layout_design),
       constraints: JSON.parse(String(row.constraints_json)) as string[],
+      technicalConstraints: row.technical_constraints_json ? JSON.parse(String(row.technical_constraints_json)) as string[] : [],
+      tags: canonicalTags(row.tags_json ? JSON.parse(String(row.tags_json)) as string[] : []),
       implementationPlan: row.implementation_plan_json ? JSON.parse(String(row.implementation_plan_json)) as ImplementationPlan : undefined,
       architecturePacket: row.architecture_packet_json ? JSON.parse(String(row.architecture_packet_json)) as ArchitecturePacket : undefined,
       source: row.source === "ollama" || row.source === "mock" ? row.source : "human",
@@ -150,12 +178,13 @@ export class VaultRepository {
   }
 
   private mapPrompt(row: Record<string, unknown>): PromptRow {
-    return { id: String(row.id), blueprintId: String(row.blueprint_id), generatedPrompt: String(row.generated_prompt), version: Number(row.version), createdAt: String(row.created_at) };
+    const kind = row.kind === "prd" || row.kind === "core-document" || row.kind === "implementation" ? row.kind : undefined;
+    return { id: String(row.id), blueprintId: String(row.blueprint_id), generatedPrompt: String(row.generated_prompt), version: Number(row.version), createdAt: String(row.created_at), kind, documentFilename: row.document_filename ? String(row.document_filename) as WorkspaceDocumentFilename : undefined, sourceExecutionId: row.source_execution_id ? String(row.source_execution_id) : undefined, contextSummary: String(row.context_summary ?? "") || undefined };
   }
 
   private mapExecution(row: Record<string, unknown>): ExecutionRow {
     const providerName = row.provider_name ? String(row.provider_name) : "";
-    return { id: String(row.id), blueprintId: String(row.blueprint_id), promptArtifactId: String(row.prompt_artifact_id), status: row.status as ExecutionRecord["status"], inputPrompt: String(row.input_prompt ?? ""), generatedOutput: String(row.generated_output ?? ""), artifactType: String(row.artifact_type ?? ""), artifactLocation: String(row.artifact_location ?? row.output_location ?? ""), outputLocation: String(row.output_location ?? ""), verificationNotes: String(row.verification_notes ?? ""), provider: providerName ? { name: providerName, model: row.provider_model ? String(row.provider_model) : undefined, fallback: Boolean(row.provider_fallback), message: row.provider_message ? String(row.provider_message) : undefined, durationMs: row.provider_duration_ms == null ? undefined : Number(row.provider_duration_ms) } : undefined, createdAt: String(row.created_at), startedAt: row.started_at ? String(row.started_at) : null, completedAt: row.completed_at ? String(row.completed_at) : null };
+    return { id: String(row.id), blueprintId: String(row.blueprint_id), promptArtifactId: String(row.prompt_artifact_id), status: row.status as ExecutionRecord["status"], inputPrompt: String(row.input_prompt ?? ""), generatedOutput: String(row.generated_output ?? ""), artifactType: String(row.artifact_type ?? ""), artifactLocation: String(row.artifact_location ?? row.output_location ?? ""), outputLocation: String(row.output_location ?? ""), verificationNotes: String(row.verification_notes ?? ""), documentFilename: row.document_filename ? String(row.document_filename) as WorkspaceDocumentFilename : undefined, sourceExecutionId: row.source_execution_id ? String(row.source_execution_id) : undefined, provider: providerName ? { name: providerName, model: row.provider_model ? String(row.provider_model) : undefined, fallback: Boolean(row.provider_fallback), message: row.provider_message ? String(row.provider_message) : undefined, durationMs: row.provider_duration_ms == null ? undefined : Number(row.provider_duration_ms) } : undefined, createdAt: String(row.created_at), startedAt: row.started_at ? String(row.started_at) : null, completedAt: row.completed_at ? String(row.completed_at) : null };
   }
 
   private ensureColumn(table: string, column: string, definition: string): void {

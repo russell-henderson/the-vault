@@ -1,4 +1,4 @@
-import { architecturePacketSchema, architectureSynthesisContextSchema, discoveryRegistryOptionSchema, generatorPolicySchema, registryValidationResultSchema, type ArchitecturePacket, type ArchitectureSynthesisContext, type BlueprintInput, type Classification, type ClassificationEvidence, type DiscoveryRegistryOption, type ExplicitConstraints, type GeneratorPolicy, type RegistryValidationRequest, type RegistryValidationResult, type ValidationReport } from "@the-vault/shared";
+import { architecturePacketSchema, architectureSynthesisContextSchema, discoveryRegistryOptionSchema, generatorPolicySchema, registryValidationResultSchema, type ArchitecturePacket, type ArchitectureSynthesisContext, type BlueprintInput, type Classification, type ClassificationEvidence, type CoreDocumentFilename, type DiscoveryRegistryOption, type ExplicitConstraints, type GeneratorPolicy, type RegistryValidationRequest, type RegistryValidationResult, type ValidationReport } from "@the-vault/shared";
 
 export type GeneratorId = "swift-spritekit" | "python-flet" | "react-typescript";
 export type DomainProfile = "mobile-physics" | "desktop-ui" | "web-dashboard";
@@ -379,6 +379,75 @@ export class GeneratorRegistry {
 }
 
 export function generateCodexPrompt(blueprint: BlueprintInput): string {
+  const list = (items: string[]) => items && items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "- None specified";
+  const techConstraints = blueprint.technicalConstraints ? list(blueprint.technicalConstraints) : "- None specified";
+  return [
+    "You are an expert product manager and software architect.",
+    "Your task is to generate a comprehensive, professional Product Requirement Document (PRD.md) based on the project specification below.",
+    "",
+    "### [CONTEXT_BLOCK: IDENTITY]",
+    `- Project Name: ${blueprint.name}`,
+    `- Description: ${blueprint.description}`,
+    `- Target Path: ${blueprint.targetPath}`,
+    "",
+    "### [CONTEXT_BLOCK: SPECIFICATION]",
+    `- Project Scope & Goals: ${blueprint.architectureOverview}`,
+    `- Target Audience & Use Cases: ${blueprint.coreLogic}`,
+    `- Document Layout: ${blueprint.layoutDesign}`,
+    `- Dependencies: ${list(blueprint.dependencies)}`,
+    "",
+    "### [CONTEXT_BLOCK: CONSTRAINTS]",
+    `- Technical Constraints: ${techConstraints}`,
+    `- Comments & Extra Context: ${list(blueprint.constraints)}`,
+    "",
+    "## Output Requirements",
+    "Generate only the complete, raw content of `PRD.md` in clean markdown format.",
+    "The document should have standard sections: Executive Summary, Scope, User Personas, Core Use Cases, Technical Architecture & Constraints, and Success Metrics.",
+    "Do not wrap your output in a markdown block, just output the raw markdown text."
+  ].join("\n");
+}
+
+export function generateContextSummary(blueprint: BlueprintInput): string {
   const list = (items: string[]) => items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "- None specified";
-  return ["# Codex Implementation Brief", "", "Implement the following component while preserving every stated constraint.", "", "## Component", `Name: ${blueprint.name}`, `Target path: ${blueprint.targetPath}`, `Language: ${blueprint.language}`, `Framework: ${blueprint.framework}`, "", "## Description", blueprint.description, "", "## Architecture overview", blueprint.architectureOverview, "", "## Core logic", blueprint.coreLogic, "", "## Layout and UI design", blueprint.layoutDesign, "", "## Dependencies", list(blueprint.dependencies), "", "## Constraints", list(blueprint.constraints), "", "## Required response", "1. Summarize the implementation approach.", "2. List the files to create or modify.", "3. Provide the implementation artifact or patch.", "4. Explain how each constraint is preserved.", "5. State verification steps and any unresolved assumptions.", "", "Do not expand scope, add dependencies, or change public contracts without calling it out explicitly."].join("\n");
+  return [
+    `# ${blueprint.name}`,
+    "",
+    blueprint.description,
+    "",
+    "## Scope",
+    blueprint.architectureOverview,
+    "",
+    "## Primary users and use cases",
+    blueprint.coreLogic,
+    "",
+    "## Constraints",
+    `- Technical: ${blueprint.technicalConstraints?.join("; ") || "None specified"}`,
+    `- Additional: ${blueprint.constraints.join("; ") || "None specified"}`,
+    "",
+    "## Dependencies",
+    list(blueprint.dependencies)
+  ].join("\n");
+}
+
+export function generateCoreDocumentPrompt(prdText: string, filename: CoreDocumentFilename): string {
+  return [
+    "You are an expert technical writer and software architect.",
+    `Generate only the complete raw Markdown content for ${filename}.`,
+    "The PRD below is the primary system context and immutable architectural source of truth. Do not invent a different product, stack, or scope.",
+    "",
+    "### [CONTEXT_BLOCK: IDENTITY]",
+    `- Target document: ${filename}`,
+    "- Source: PRD.md",
+    "",
+    "### [CONTEXT_BLOCK: SPECIFICATION]",
+    "The generated document must be internally consistent with the PRD and useful to an engineer implementing the approved project.",
+    "",
+    "### [CONTEXT_BLOCK: CONSTRAINTS]",
+    "- Preserve every explicit PRD constraint.",
+    "- Do not include secrets or pretend that files were written to the repository.",
+    "- Output only the requested document content.",
+    "",
+    "## PRIMARY SYSTEM CONTEXT: PRD.md",
+    prdText
+  ].join("\n");
 }

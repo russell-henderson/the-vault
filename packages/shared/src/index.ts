@@ -2,6 +2,12 @@ import { z } from "zod";
 
 const nonEmpty = z.string().trim().min(1);
 
+export function normalizeTag(value: string): string {
+  return value.normalize("NFKD").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+}
+
+const tagsSchema = z.array(z.string().trim().max(80)).max(20).default([]).transform((tags) => Array.from(new Set(tags.map(normalizeTag).filter(Boolean))).slice(0, 20));
+
 export const providerMetadataSchema = z.object({
   name: nonEmpty,
   model: z.string().trim().max(160).optional(),
@@ -15,6 +21,10 @@ export const providerSelectionSchema = z.object({
   provider: providerKindSchema,
   model: z.string().trim().max(160).optional()
 });
+export const promptKindSchema = z.enum(["prd", "core-document", "implementation"]);
+export const coreDocumentFilenameSchema = z.enum(["README.md", "ARCHITECTURE.md", "API.md", "DEPLOYMENT.md", "TROUBLESHOOTING.md"]);
+export const workspaceDocumentFilenameSchema = z.union([z.literal("PRD.md"), coreDocumentFilenameSchema]);
+export const workspaceDocumentStatusSchema = z.enum(["pending", "running", "completed", "failed"]);
 export const providerModelOptionSchema = z.object({
   provider: providerKindSchema,
   model: nonEmpty.max(160),
@@ -242,12 +252,13 @@ export const blueprintInputSchema = z.object({
   coreLogic: nonEmpty.max(4000),
   layoutDesign: nonEmpty.max(4000),
   constraints: z.array(nonEmpty.max(1000)).max(50),
+  technicalConstraints: z.array(nonEmpty.max(1000)).max(50).optional(),
+  tags: tagsSchema,
   implementationPlan: implementationPlanSchema.optional(),
   architecturePacket: architecturePacketSchema.optional(),
   source: z.enum(["human", "ollama", "mock"]).optional(),
   sourceBrief: z.string().trim().max(8000).optional()
 });
-
 export const blueprintSchema = blueprintInputSchema.extend({
   id: nonEmpty,
   createdAt: z.string().datetime(),
@@ -259,7 +270,11 @@ export const promptArtifactSchema = z.object({
   blueprintId: nonEmpty,
   generatedPrompt: nonEmpty,
   version: z.number().int().positive(),
-  createdAt: z.string().datetime()
+  createdAt: z.string().datetime(),
+  kind: promptKindSchema.optional(),
+  documentFilename: workspaceDocumentFilenameSchema.optional(),
+  sourceExecutionId: nonEmpty.optional(),
+  contextSummary: z.string().trim().max(12000).optional()
 });
 
 export const executionStatusSchema = z.enum(["pending", "running", "completed", "failed", "needs-review"]);
@@ -274,6 +289,8 @@ export const executionRecordSchema = z.object({
   artifactLocation: z.string(),
   outputLocation: z.string(),
   verificationNotes: z.string(),
+  documentFilename: workspaceDocumentFilenameSchema.optional(),
+  sourceExecutionId: nonEmpty.optional(),
   provider: providerMetadataSchema.optional(),
   createdAt: z.string().datetime(),
   startedAt: z.string().datetime().nullable(),
@@ -282,6 +299,12 @@ export const executionRecordSchema = z.object({
 
 export const verificationInputSchema = z.object({ verificationNotes: nonEmpty.max(4000) });
 export const executionCreateSchema = z.object({ promptArtifactId: nonEmpty, provider: z.enum(["configured", "mock"]).default("configured"), creation: providerSelectionSchema.optional() });
+export const blueprintMutationSchema = z.object({ projectName: z.string().trim().min(1).max(120).optional(), tags: tagsSchema.optional() }).refine((value) => value.projectName !== undefined || value.tags !== undefined, { message: "A project name or tags update is required" });
+export const generateCoreDocsInputSchema = z.object({
+  creation: providerSelectionSchema.optional(),
+  requestedFiles: z.array(coreDocumentFilenameSchema).min(1).max(5).optional()
+}).refine((value) => !value.requestedFiles || new Set(value.requestedFiles).size === value.requestedFiles.length, { message: "requestedFiles must not contain duplicates", path: ["requestedFiles"] });
+export const rerollDocumentInputSchema = z.object({ filename: coreDocumentFilenameSchema, creation: providerSelectionSchema.optional() });
 export const briefInputSchema = z.object({ brief: nonEmpty.max(8000), provider: z.enum(["configured", "mock"]).default("configured"), analysis: providerSelectionSchema.optional(), generatorId: stackIdSchema.optional(), discovery: z.unknown().optional() });
 export const discoveryInputSchema = z.object({ brief: nonEmpty.max(8000), analysis: providerSelectionSchema.optional(), provider: z.enum(["configured", "mock"]).default("configured") });
 export const blueprintProposalSchema = z.object({
@@ -306,8 +329,25 @@ export const providerStatusSchema = z.object({
   ollamaAvailable: z.boolean().optional(),
   catalogRefreshedAt: z.string().datetime().optional()
 });
+export const workspaceDocumentSchema = z.object({
+  filename: workspaceDocumentFilenameSchema,
+  status: workspaceDocumentStatusSchema,
+  content: z.string(),
+  executionId: nonEmpty.nullable(),
+  promptArtifactId: nonEmpty.nullable(),
+  sourceExecutionId: nonEmpty.nullable(),
+  error: z.string().optional(),
+  provider: providerMetadataSchema.optional(),
+  updatedAt: z.string().datetime().nullable()
+});
+export const blueprintWorkspaceSchema = z.object({
+  blueprint: blueprintSchema,
+  documents: z.array(workspaceDocumentSchema),
+  prdExecutionId: nonEmpty.nullable()
+});
 
 export type BlueprintInput = z.infer<typeof blueprintInputSchema>;
+export type BlueprintMutation = z.infer<typeof blueprintMutationSchema>;
 export type Blueprint = z.infer<typeof blueprintSchema>;
 export type ImplementationPlan = z.infer<typeof implementationPlanSchema>;
 export type BlueprintProposal = z.infer<typeof blueprintProposalSchema>;
@@ -315,6 +355,10 @@ export type BriefInput = z.infer<typeof briefInputSchema>;
 export type ProviderMetadata = z.infer<typeof providerMetadataSchema>;
 export type ProviderKind = z.infer<typeof providerKindSchema>;
 export type ProviderSelection = z.infer<typeof providerSelectionSchema>;
+export type PromptKind = z.infer<typeof promptKindSchema>;
+export type CoreDocumentFilename = z.infer<typeof coreDocumentFilenameSchema>;
+export type WorkspaceDocumentFilename = z.infer<typeof workspaceDocumentFilenameSchema>;
+export type WorkspaceDocumentStatus = z.infer<typeof workspaceDocumentStatusSchema>;
 export type ProviderModelOption = z.infer<typeof providerModelOptionSchema>;
 export type ProviderCatalog = z.infer<typeof providerCatalogSchema>;
 export type ProviderStatus = z.infer<typeof providerStatusSchema>;
@@ -344,3 +388,7 @@ export type ExecutionRecord = z.infer<typeof executionRecordSchema>;
 export type ExecutionStatus = z.infer<typeof executionStatusSchema>;
 export type VerificationInput = z.infer<typeof verificationInputSchema>;
 export type ExecutionCreateInput = z.infer<typeof executionCreateSchema>;
+export type GenerateCoreDocsInput = z.infer<typeof generateCoreDocsInputSchema>;
+export type RerollDocumentInput = z.infer<typeof rerollDocumentInputSchema>;
+export type WorkspaceDocument = z.infer<typeof workspaceDocumentSchema>;
+export type BlueprintWorkspace = z.infer<typeof blueprintWorkspaceSchema>;

@@ -12,6 +12,7 @@ const demoBlueprint: BlueprintInput = {
   coreLogic: "Fetch and render summary metrics, preserve a clear API boundary, and keep server persistence outside the component.",
   layoutDesign: "Responsive card layout with readable metric hierarchy, keyboard-accessible controls, and a compact mobile arrangement.",
   constraints: ["Handle loading and API error states explicitly.", "Do not own server persistence.", "Meet accessibility expectations for keyboard and screen-reader users."],
+  tags: [],
   implementationPlan: {
     summary: "Create a bounded, accessible analytics panel with a typed data boundary and explicit UI states.",
     steps: ["Define the analytics view model and API adapter contract.", "Build loading, error, empty, and ready states.", "Verify responsive layout and keyboard behavior."],
@@ -22,7 +23,7 @@ const demoBlueprint: BlueprintInput = {
   source: "human"
 };
 
-const repository = new VaultRepository();
+const repository = new VaultRepository(process.env.VAULT_DATABASE_PATH ?? "apps/api/data/vault.db");
 const existing = repository.listBlueprints().find((blueprint) => blueprint.name === demoBlueprint.name);
 const blueprint = existing ? (existing.implementationPlan ? existing : repository.updateBlueprint(existing.id, demoBlueprint)!) : repository.createBlueprint(demoBlueprint);
 console.log(existing ? `Demo blueprint ready: ${blueprint.id}` : `Created demo blueprint: ${blueprint.id}`);

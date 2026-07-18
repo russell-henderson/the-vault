@@ -1,125 +1,209 @@
-# The Vault Architect — Development Plan
+# The Vault Architect — Product and Development Plan
 
-## MVP scope
+**Status:** Canonical product scope and delivery plan
+**Last reviewed:** 2026-07-18
 
-The MVP should demonstrate a complete, narrow workflow:
+This document consolidates the former MVP definition and development plan. Architecture and authority rules are canonical in [architecture.md](architecture.md).
 
-- Create or edit a component blueprint.
-- Store linked requirements and architectural decisions.
-- Generate a structured implementation plan with tasks, constraints, and acceptance criteria.
-- Require explicit human approval.
-- Hand the approved context to Codex through a replaceable integration boundary.
-- Record the implementation result, changed files, and verification evidence.
-- Present the full trace from intent to result in a simple interface.
+## 1. Product objective
 
-## Current implementation status
+Vault Architect creates a durable, reviewable handoff between human architectural intent and AI-assisted implementation.
 
-The approved TypeScript monorepo is implemented with React/Vite/Tailwind, Fastify, SQLite, shared Zod schemas, deterministic prompt generation, Ollama and mock provider adapters, packet export, and focused Vitest coverage. The current demo path is:
+~~~text
+Human brief
+  → validated architecture direction
+  → approved blueprint and packet
+  → deterministic implementation prompt
+  → provider execution
+  → artifact and verification evidence
+~~~
 
-```text
-Brief → analysis provider/model selection → validated proposal → human approval → prompt → creation provider/model selection → execution → verification/export
-```
+The MVP is for one technical user in one local workspace. It is not a team collaboration product or an unrestricted autonomous agent.
 
-Provider selections are ephemeral and per operation. The live Ollama catalog is manually refreshed, cloud-tagged models are hidden, and the deterministic mock remains selectable when Ollama is unavailable.
+## 2. Included scope
 
-Stage 6 authority-boundary migration is implemented: enrichment can discover but cannot authorize, registry policy is explicit and hash-pinned, and the orchestrator blocks providers until registry validation passes. Unsupported, deprecated, disabled, conflicting, or version-drifted requests return `review-required` without packet creation or persistence.
+- Natural-language brief composition.
+- Structured blueprint authoring and validation.
+- Registry-backed architecture discovery.
+- Explicit generator confirmation.
+- Authority-bound final synthesis.
+- Architecture Packet V2 with dynamic components and provenance.
+- Human review and approval of generated proposals.
+- Deterministic prompt compilation.
+- Independent analysis and creation provider/model selection.
+- Ollama local provider and deterministic mock provider.
+- SQLite persistence for blueprints, packets, prompts, executions, and notes.
+- Execution lifecycle and normalized provider metadata.
+- Human verification notes.
+- Markdown copy and full-trace JSON export.
+- Multi-document workspace with PRD preview, selectable core-document generation, isolated rerolls, real-time SSE document streaming, and client-side Markdown/ZIP export.
+- Reliable blueprint vault mutations with canonical tags, authoritative state synchronization, and confirmed bulk deletion.
+- Authored dashboard masthead/status ribbon, persona-driven SSE generation feedback, and optional browser-local IndexedDB cover art for blueprint cards.
+- Review-required behavior for unsupported, ambiguous, conflicting, or drifted requests.
+- Repeatable local demo path.
 
-Out of scope for the first demo: multi-tenant collaboration, production-grade permissions, autonomous unreviewed merges, broad IDE support, complex graph analytics, and a large plugin marketplace.
+## 3. Explicit exclusions
 
-## Development phases
+- Multi-user accounts, roles, permissions, and real-time collaboration.
+- Autonomous repository mutation or unreviewed merges.
+- Full IDE, GitHub, and pull-request automation.
+- Long-running agents with unrestricted shell or workspace access.
+- Production sandboxing and isolated code execution.
+- Enterprise audit retention, billing, and multi-tenant hosting.
+- Automated architecture correctness proofs.
+- General project management or issue tracking.
+- Marketplace of templates, plugins, or model providers.
+- Immutable revisions and separate append-only evidence storage in the current MVP.
 
-### Phase 1 — Foundation
+## 4. Current implementation
 
-- Confirm the runtime, language, UI approach, and storage format.
-- Initialize version control and project metadata.
-- Define the domain schema for artifacts, relationships, plans, runs, and evidence.
-- Add repository instructions, formatting, linting, and a minimal test harness.
-- Build a thin vertical slice with fixture data before adding AI calls.
+The TypeScript monorepo implements the local MVP and Stage 6 authority migration:
 
-### Phase 2 — Core functionality
+~~~text
+Brief
+  → analysis provider/model selection
+  → constraint extraction
+  → registry-backed discovery
+  → confirmed generator
+  → authorized proposal
+  → human approval
+  → prompt artifact
+  → PRD context summary and document workspace
+  → creation provider/model selection
+  → per-document execution and reroll
+  → verification/export
+~~~
 
-- Implement artifact creation and editing.
-- Implement linking between blueprints, requirements, decisions, tasks, and evidence.
-- Generate deterministic plans from structured inputs.
-- Add approval, status, revision, and validation behavior.
-- Persist records in a human-readable, versionable format.
+Supported generator IDs:
 
-### Phase 3 — AI/Codex integration
+- swift-spritekit for mobile physics;
+- python-flet for desktop UI;
+- react-typescript for web dashboards.
 
-- Define a provider-neutral orchestration interface.
-- Build the Codex context packager with strict scope and explicit constraints.
-- Add model prompts or structured requests for plan generation and implementation.
-- Capture model outputs, tool actions, diffs, and verification results.
-- Add safeguards for missing context, scope expansion, secrets, and destructive operations.
+The registry controls capability expansion. Enrichment and models cannot introduce executable stacks.
 
-### Earlier roadmap milestone — User experience
+## 5. Acceptance criteria
 
-- Add an architecture overview.
-- Add blueprint and decision editing.
-- Add a plan review and approval screen.
-- Add execution status, diff summary, and verification evidence.
-- Make the end-to-end demo understandable without explaining internal code.
+### Intent and routing
 
-### Phase 5 — Demo preparation
+- A user can submit a natural-language brief.
+- Platform, language, framework, version, and prohibition constraints are extracted.
+- Discovery returns only registry-backed actionable options.
+- Unsupported discoveries remain visible and non-actionable.
+- Final proposals require a confirmed generator ID.
+- Unsupported, ambiguous, conflicting, low-confidence, or incompatible intent returns review-required.
+- No unsupported brief is silently routed to a legacy web template.
 
-- Seed one realistic example component and its architectural decisions.
-- Script a repeatable happy-path demo and one human-approval intervention.
-- Validate clean setup from a fresh checkout.
-- Add concise README, screenshots or recording, and known limitations.
-- Freeze scope and focus on reliability, latency, and clarity.
+### Authorization and synthesis
 
-### Implemented local-provider milestone
+- Registry policy validates generator, lifecycle, version, template, capability, constraint, registry-version, and policy-hash conditions.
+- The orchestrator creates the authorized synthesis context.
+- Normal provider input excludes raw enrichment and analyzer reasoning.
+- Successful synthesis produces a valid Architecture Packet V2.
+- Packet components, references, generator version, and provenance are validated before approval.
+- Mock and Ollama use a provider-neutral boundary.
 
-- Add Ollama health and model catalog discovery.
-- Support independent analysis and creation model selection.
-- Validate selections server-side and preserve provider/model metadata.
-- Add accessible catalog refresh and unavailable-model states.
-- Preserve deterministic mock execution and Phase 1 packet export behavior.
+### Review and evidence
 
-### Phase 4 — Registry-based domain routing (implemented)
+- A human can review a proposal before saving it.
+- A saved blueprint can produce a deterministic prompt artifact.
+- A prompt can create a pending execution.
+- Executions transition through pending, running, completed, or failed.
+- Provider metadata and generated output are recorded.
+- Human verification notes are visible.
+- The full trace can be reviewed and exported.
 
-- Classify brief intent before selecting a provider prompt or generator.
-- Resolve only through `GeneratorRegistry`; initial definitions are Swift/SpriteKit, Python/Flet, and React/TypeScript.
-- Enforce the `0.78` confidence threshold, alternative margin, and classification-evidence compatibility checks.
-- Return `Review Required` for unsupported or ambiguous intent without generating or persisting a blueprint.
-- Generate and validate Architecture Packet V2 with dynamic components, layers, data flows, and provenance.
-- Preserve legacy blueprint records, provider metadata, execution evidence, and Phase 1 packet exports.
+### Reliability and safety
 
-The implementation contract and extension rules are in [`registry-generator-engine.md`](registry-generator-engine.md).
+- Shared Zod schemas validate API and persisted boundaries.
+- Secrets are excluded from prompts, logs, artifacts, fixtures, and docs.
+- Normal application flow cannot authorize an unregistered stack.
+- Failure paths are covered by focused tests.
+- Verification results and environment blockers are recorded.
 
-## Priority order
+## 6. Delivery history
 
-1. Domain classification and strict registry routing before any generation.
-2. End-to-end traceability from blueprint to verified change.
-3. Human approval and scope control.
-4. Reliable structured data model and persistence.
-5. Useful Codex context packaging and result capture.
-6. Clear UI for the demo workflow.
-7. Integrations, analytics, and extensibility.
+1. Foundation: local TypeScript stack, modular monolith, SQLite, shared contracts, provider abstraction, and evidence model.
+2. Blueprint workflow: authoring, persistence, prompt compilation, and review UI.
+3. Provider boundary: execution lifecycle, mock provider, Ollama adapter, normalized output, and verification.
+4. Local AI demo: catalog refresh, independent model roles, packet export, and command-center UI.
+5. Registry routing: three registered domains, strict classification, dynamic packets, and no fallback.
+6. Constraint gate: exact matching, hard constraints, prohibitions, unsupported review, and questions.
+7. Stage 6 authority migration: discovery/authorization separation, policy hashes, provenance, provider isolation, and enrichment adapters.
+8. API evidence: deterministic action coverage and complete workflow trace.
+9. Vault Prompt and documentation consolidation.
 
-## Technical milestones
+Detailed history is in [BUILD_LOG.md](../BUILD_LOG.md).
 
-- **M1:** Repository initialized with selected stack, CI-ready commands, and documented conventions.
-- **M2:** Artifact schema and persistence pass unit tests.
-- **M3:** A blueprint can produce a deterministic, reviewable plan.
-- **M4:** An approved plan can be submitted to the Codex adapter and produce a recorded run.
-- **M5:** Verification evidence is attached to the run and visible in the UI.
-- **M6:** A fresh environment can run the scripted demo successfully.
+## 7. Priority order
 
-## Testing strategy
+1. Preserve registry routing and authority boundaries.
+2. Preserve brief-to-verification traceability.
+3. Preserve human confirmation and scope control.
+4. Keep contracts and persistence deterministic.
+5. Keep providers replaceable and bounded.
+6. Keep the local demo reliable and understandable.
+7. Add integrations only after the core evidence path remains clear.
 
-- Unit-test parsing, validation, relationship rules, status transitions, and plan generation.
-- Use contract tests for the Codex adapter so provider behavior is isolated and mockable.
-- Add integration tests for persistence, approval gates, execution records, and verification capture.
-- Add one end-to-end test for the primary demo path.
-- Test failure paths: missing requirements, rejected plans, provider errors, partial execution, changed scope, and failed checks.
-- Treat generated plans and model outputs as untrusted inputs; test schema validation and prompt/context boundaries.
-- Keep a small set of golden fixtures to detect accidental changes in plan structure.
+## 8. Current hardening backlog
 
-## Deployment considerations
+### H1 — Native persistence verification
 
-For the MVP, prefer a single deployable service with file or embedded-database persistence and environment-based configuration. Keep secrets out of artifacts and logs. Provide a local development command and a simple hosted demo path. Before production use, add authentication, authorization, encrypted storage, rate limiting, provider isolation, audit retention, and secure sandboxing for code execution.
+The historical full-suite report passed in its original environment. If the current runtime reports a better-sqlite3 Node ABI mismatch, rebuild the native dependency before claiming current persistence verification.
 
-## Approved and implemented technology
+### H2 — Provider context enforcement
 
-The repository uses a minimal TypeScript full-stack application with a React/Vite web UI, Fastify API, shared Zod validation, SQLite persistence, and replaceable provider adapters. The implementation keeps provider-specific request formats behind the API/provider boundary and leaves future remote providers, sandboxed code mutation, and team collaboration outside the MVP.
+The normal API path passes AuthorizedSynthesisContext, but compatibility parameters still accept a plain synthesis context. Tighten the provider contract so unvalidated synthesis cannot be called directly.
+
+### H3 — Durable approval and revisions
+
+The blueprint record is mutable and approval is mainly the UI save action. A future revision/approval model requires an ADR, migration, and compatibility strategy.
+
+### H4 — Complete execution provenance
+
+Execution records link to packet and blueprint context but do not independently store the full authorization provenance. Add this only with a defined schema and migration.
+
+### H5 — Future execution policy
+
+Before direct code-writing or Codex workspace access, define allowed context, file scope, sandbox, timeouts, secrets, destructive operations, approvals, and mandatory checks.
+
+## 9. Testing strategy
+
+- Unit tests for extraction, classification, policy validation, packet rules, prompt generation, and state transitions.
+- Contract tests for provider normalization, catalog filtering, schema validation, and unavailable models.
+- Integration tests for SQLite persistence, approval flow, execution records, and verification.
+- API coverage for discovery, review-required behavior, proposal authorization, prompt generation, execution, and verification.
+- Regression fixtures for SwiftUI versus Swift/SpriteKit, unsupported Vue, conflicting mobile/web intent, prohibitions, stale policy, and version drift.
+- Golden fixtures for deterministic prompt and packet structure.
+
+## 10. Verification
+
+Run:
+
+~~~powershell
+npm test
+npm run typecheck
+npm run build
+npm run seed:demo
+git diff --check
+~~~
+
+Focused authority checks:
+
+~~~powershell
+npm test -- --run tests/authority-boundary.test.ts tests/generator-registry.test.ts tests/architecture-orchestrator.test.ts tests/architecture-analyzer.test.ts tests/constraint-extractor.test.ts
+~~~
+
+Current record:
+
+- typecheck passes in the current workspace;
+- build passes in the current workspace;
+- focused authority/provider checks pass in the current workspace;
+- the historical 2026-07-17 workflow report recorded 17 test files and 67 passing tests;
+- a current better-sqlite3 ABI mismatch is an environment blocker, not evidence of an application logic failure.
+
+## 11. Release rule
+
+A feature is complete when behavior, tests, documentation, acceptance criteria, and verification evidence agree.
+
+An architectural change requires human approval, an updated ADR, an updated architecture record, updated tests/migration notes, and a build-log entry.

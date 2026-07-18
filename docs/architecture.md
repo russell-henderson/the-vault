@@ -1,113 +1,327 @@
-# The Vault Architect — Architecture
+# The Vault Architect — Canonical Architecture
 
-## Project vision
+**Status:** Canonical architecture record
+**Last reviewed:** 2026-07-18
 
-The Vault Architect is an AI-native development orchestration system that turns human architectural intent into implementation-ready work for Codex. It keeps blueprints, specifications, design decisions, implementation plans, and verification evidence connected so that AI-assisted delivery remains understandable, reviewable, and faithful to the intended architecture.
+This document consolidates the former architecture overview, system design, authority contract, enrichment boundary, and implemented architecture diagram. Detailed generator policy remains in [registry-generator-engine.md](registry-generator-engine.md). Provider details remain in [codex-integration.md](codex-integration.md). The accepted authority decision remains in [ADR-001](adr/ADR-001-authority-model.md).
 
-The Build Week MVP should demonstrate one compelling loop: a human defines a component and its constraints, the system produces a structured implementation workflow, Codex executes the approved work, and the resulting changes are checked against the original intent.
+## 1. Purpose and boundary
 
-## Core problem
+Vault Architect connects human architectural intent to bounded, reviewable AI-assisted implementation workflows.
 
-Architectural knowledge is often scattered across conversations, issue trackers, documents, and code. AI coding agents can implement quickly but may lose context, violate boundaries, or produce changes that are difficult to audit. The Vault Architect provides a durable, structured source of truth between architectural reasoning and code execution.
+The product preserves this chain of custody:
 
-## Current repository state
-
-The workspace contains a TypeScript monorepo with React/Vite/Tailwind frontend, Fastify API, SQLite persistence, shared Zod schemas, deterministic prompt generation, Ollama/local-provider adapters, and focused tests. The architecture below describes the implemented local-first workflow and its bounded future expansion.
-
-## Stage 6 authority boundary
-
-The implemented authority sequence is `Discover → Evaluate → Authorize → Validate → Synthesize`. Enrichment is untrusted and ephemeral; `GeneratorRegistry` owns generator policy and authorization validation; `ArchitectureOrchestrator` is the only synthesis authorization path. Providers receive only an authorized context pinned to registry version, policy hash, generator version, template, and provenance. Review-required stops provider access and persistence. The manual structured blueprint endpoint remains a trusted-input exception.
-
-## Phase 4 domain-aware orchestration
-
-The proposal path is now domain-first and registry-driven. `ArchitectureOrchestrator` calls the `GeneratorRegistry` to classify the brief, enforces the confidence threshold, semantic-integrity threshold, and alternative margin, resolves the recommended registered generator, and validates classification evidence against that generator before building provider instructions. The initial registry contains `swift-spritekit`, `python-flet`, and `react-typescript`.
-
-There is no default generator. Unsupported, low-confidence, ambiguous, conflicting, or incompatible intent returns `Review Required` and stops before prompt construction, provider generation, or vault persistence. This preserves human control and prevents a legacy React/Tailwind template from silently receiving a non-web brief. Exact token/phrase matching prevents `SwiftUI` from being treated as `Swift` plus SpriteKit.
-
-The additive Architecture Packet V2 stores stack identity, domain intent, dynamic components, layers, data flows, validation, and provenance. Its component contract supports mobile physics controllers and scene layers, desktop view/event/state components, and web API/accessibility components without changing the orchestrator. The full registry contract is documented in [`registry-generator-engine.md`](registry-generator-engine.md).
-
-## System architecture
-
-The implemented MVP is a small web application with a local server-side workspace:
-
-1. **Workspace and document layer** — stores project briefs, component blueprints, implementation packets, prompt artifacts, execution records, and verification records in SQLite, with Markdown/JSON export for review.
-2. **Domain model** — represents architectural artifacts and their relationships: project, component, requirement, decision, task, implementation run, and evidence.
-3. **Orchestration engine** — converts approved artifacts into a bounded implementation workflow with ordered tasks, constraints, acceptance criteria, and required checks.
-4. **Provider adapter** — presents bounded workflow context to Ollama, the deterministic mock, or a future Codex provider, and normalizes results without exposing provider-specific APIs to the domain model. A read-only catalog endpoint exposes the current local Ollama inventory, hides cloud-tagged models, and keeps analysis and creation selections independent and ephemeral.
-5. **Verification layer** — runs or records tests, linting, structural checks, and human review against acceptance criteria.
-6. **User interface** — shows architecture, generated plans, approval gates, execution status, diffs, and verification evidence.
-
-The current implementation uses SQLite for durable workspace records and exports the full trace as JSON. Multi-user permissions, remote integrations, and repository mutation remain outside the MVP.
-
-## Major components
-
-### Architectural artifacts
-
-Artifacts are the durable units of intent. Each should have an identifier, type, title, status, owner, source, relationships, and revision history. A component blueprint should capture purpose, inputs and outputs, dependencies, invariants, acceptance criteria, and known tradeoffs.
-
-### Plan generator
-
-The plan generator reads selected artifacts and produces an implementation plan that is specific enough for Codex to execute. It must preserve constraints and expose uncertainty instead of silently inventing requirements.
-
-### Approval gate
-
-Human approval is required before a generated plan can authorize code changes, especially when the plan changes boundaries, data models, security behavior, or public interfaces.
-
-### Execution and evidence
-
-Each implementation run records the context supplied to Codex, tasks attempted, files changed, test results, unresolved questions, and links back to the originating architectural artifacts.
-
-## Data flow
-
-```text
+~~~text
 Human intent
-    ↓
-Blueprints, specifications, and decisions
-    ↓
-Structured domain model and linked context
-    ↓
-Provider catalog → selected analysis model → proposal with constraints and acceptance criteria
-    ↓
-Human review / approval gate
-    ↓
-Deterministic prompt generation
-    ↓
-Selected creation model → provider execution through an isolated adapter
-    ↓
-Diffs, tests, and verification evidence
-    ↓
-Updated artifacts, implementation record, and audit trail
-```
+  → discovery and clarification
+  → registered capability selection
+  → authorization and constraint validation
+  → human confirmation
+  → architecture packet
+  → deterministic implementation prompt
+  → provider execution
+  → artifact and verification evidence
+~~~
 
-The system should maintain traceability in both directions: every implementation task points to its architectural source, and every decision can show the implementation work and evidence it influenced.
+The product is not an autonomous coding agent. Human intent, explicit constraints, approval, and verification remain authoritative. AI-generated discovery, plans, packets, prompts, and artifacts are proposed content until reviewed.
 
-## Human-to-AI workflow
+The MVP is for one user in one local workspace. Team permissions, unrestricted agents, autonomous merges, and production-scale hosting are outside the current boundary.
 
-1. The human describes the desired component or change and records constraints and success criteria.
-2. The system normalizes the input into linked architectural artifacts and flags missing information.
-3. The system proposes an implementation workflow, including files or modules likely to change, sequencing, risks, and verification steps.
-4. The human edits or approves the plan. Approval is the explicit authorization to proceed.
-5. Codex executes the bounded plan, asking for clarification when constraints conflict or scope expands.
-6. The system captures the diff and verification results, then presents them for human review.
-7. The human accepts, requests revisions, or records a decision that changes the architecture.
+## 2. Source-of-truth hierarchy
 
-## Architectural principles
+When artifacts disagree, use this order:
 
-- Human intent is authoritative; AI-generated content is proposed until approved.
-- Plans are structured data first and prose second.
-- Every change should be traceable to a requirement, decision, or explicit task.
-- Uncertainty and conflicts must be visible.
-- Provider-specific AI integration must remain replaceable.
-- The MVP should optimize for a strong end-to-end demonstration, not broad platform coverage.
+1. Current source code and executable tests.
+2. Accepted decisions in docs/adr.
+3. This canonical architecture record.
+4. Detailed technical contracts.
+5. Development, demo, submission, and historical report documents.
 
-## Future expansion possibilities
+Historical reports record what passed in their recorded environment. They do not override current code or current verification.
 
-- GitHub issues, pull requests, and review-thread synchronization.
-- Multiple Codex/GPT providers and model-specific execution policies.
-- Semantic search across architectural history and code.
-- Automated architecture drift detection.
-- Team roles, permissions, and approval policies.
-- Rich dependency graphs and impact analysis.
-- Reusable blueprint and workflow templates.
-- Metrics for plan quality, rework, verification coverage, and decision latency.
-- Remote workspaces, encrypted secrets, and enterprise audit controls.
+## 3. Implemented system
+
+| Area | Implementation |
+| --- | --- |
+| Web | React, Vite, TypeScript, Tailwind |
+| API | Fastify and TypeScript |
+| Contracts | Shared Zod schemas in packages/shared |
+| Policy and prompts | packages/prompts |
+| Persistence | SQLite through better-sqlite3 and VaultRepository |
+| Providers | Local Ollama and deterministic mock adapters |
+| Verification | Vitest unit, integration, contract, and workflow tests |
+| Runtime | Local modular monolith with a replaceable provider boundary |
+
+The application owns the brief, constraints, routing, authorization, persistence, prompt compilation, execution lifecycle, verification, and export. Providers own only bounded normalized AI output.
+
+## 4. End-to-end architecture
+
+~~~text
+Human
+  │ natural-language brief
+  ▼
+React workspace
+  │ catalog refresh and analysis selection
+  ▼
+Fastify API + shared Zod schemas
+  │ constraint extraction and registry-backed discovery
+  ├── Review Required: unsupported, ambiguous, conflicting, or incomplete
+  │ confirmed registered generator
+  ▼
+ArchitectureOrchestrator
+  │ registry policy validation and authorization provenance
+  ├── Review Required: no synthesis or persistence
+  │ AuthorizedSynthesisContext
+  ▼
+Ollama or explicit deterministic mock provider
+  │ structured proposal
+  ▼
+Architecture Packet V2 validation
+  ▼
+Human review and approval
+  ▼
+SQLite blueprint record
+  │ deterministic prompt compilation
+  ▼
+Prompt artifact
+  │ independent creation provider/model selection
+  ▼
+ExecutionService
+  │ pending → running → completed or failed
+  ▼
+Execution evidence
+  │ human verification
+  ▼
+Reviewable history and optional full-trace export
+~~~
+
+### Frontend
+
+- Dashboard: workspace overview, provider signal, metrics, and blueprint library.
+- Dashboard cards support optional browser-local cover art stored in IndexedDB; cover blobs are presentation state and never cross the API or SQLite boundary.
+- BriefComposer: brief entry, discovery, model selection, generator confirmation, and synthesis.
+- BlueprintProposal: proposal review and approval.
+- BlueprintForm: trusted structured authoring.
+- BlueprintDetail: specification, packet, prompt, execution, artifact, and verification review.
+- ProviderRoleControl and ProviderModelSelect: independent role selections, refresh, and unavailable-model state.
+- PromptPreview, ExecutionLauncher, ExecutionResult, ExecutionTimeline, and VerificationPanel: visible evidence layers.
+
+### Backend
+
+- Fastify routes for discovery, proposals, blueprints, prompts, executions, and verification.
+- ConstraintExtractor for explicit platform, language, framework, version, and prohibition extraction.
+- ArchitectureAnalyzer and DiscoveryEnricher for consultative discovery.
+- GeneratorRegistry for policy, compatibility, classification, and packet rules.
+- ArchitectureOrchestrator for final authorization and provider-context construction.
+- ExecutionService for provider validation and lifecycle transitions.
+- VaultRepository for SQLite persistence.
+- AiProvider, OllamaAiProvider, and MockAiProvider for normalized provider behavior.
+
+## 5. Authority and trust model
+
+The required sequence is:
+
+~~~text
+Discover → Evaluate → Authorize → Validate → Synthesize
+~~~
+
+| Concern | Owner | Authority |
+| --- | --- | --- |
+| Desired outcome | Human | Authoritative |
+| Explicit constraints | Brief and constraint extractor | Authoritative after extraction |
+| Enrichment | Discovery adapters | Observational only |
+| Candidate ranking | Analyzer and registry slice | Consultative only |
+| Generator policy | GeneratorRegistry | Canonical |
+| Final authorization | ArchitectureOrchestrator | Sole synthesis gate |
+| AI synthesis | Selected provider | Generation only |
+| Approval | Human review action | Required for generated blueprint persistence |
+| Verification | Human and recorded checks | Acceptance evidence |
+
+### Enrichment boundary
+
+Enrichment may report observations, likely options, missing information, questions, unsupported technologies, sources, and warnings. It is temporary and untrusted.
+
+Enrichment cannot create a packet, persist a blueprint, authorize a generator, override constraints, alter registry policy, or authorize provider access.
+
+The Analyzer exposes enrichment as suggestedGeneratorId, likelyStackOptions, and visible unsupported discoveries. Final synthesis re-extracts constraints and validates the confirmed generator against the full registry.
+
+### Registry boundary
+
+GeneratorRegistry owns registered IDs, implementation platform/language/frameworks, versions, templates, lifecycle, capabilities, constraints, capability fingerprints, policy hashes, and authorized options.
+
+It rejects unknown, unsupported, disabled, deprecated-without-override, version-drifted, policy-hash-drifted, capability-incompatible, and constraint-conflicting requests.
+
+### Orchestrator boundary
+
+ArchitectureOrchestrator:
+
+1. re-extracts constraints;
+2. resolves the confirmed generator;
+3. classifies the brief;
+4. checks confidence, semantic integrity, alternative margin, conflicts, and hard constraints;
+5. calls GeneratorRegistry.validateRequest;
+6. creates authorization provenance;
+7. builds AuthorizedSynthesisContext;
+8. passes only the authorized request to final synthesis.
+
+No provider call, packet creation, or proposal persistence may occur after failed authorization.
+
+## 6. Registered generators
+
+| ID | Domain | Platform | Language | Framework | Packet emphasis |
+| --- | --- | --- | --- | --- | --- |
+| swift-spritekit | mobile-physics | mobile | Swift | SpriteKit | physics, scene, entity, input, persistence |
+| python-flet | desktop-ui | desktop | Python | Flet | view, events, state, service, persistence |
+| react-typescript | web-dashboard | web | TypeScript | React / React + Tailwind | view, state, API, accessibility, persistence |
+
+Adding a generator is a policy change. It requires a registered definition, explicit capabilities and constraints, classification and packet rules, tests, documentation, and approval. The orchestrator must not gain a stack-specific branch merely to support it.
+
+## 7. Classification and safety
+
+Constraint extraction occurs before ranking. Matching is token- and phrase-based, not substring-based. Negations are prohibitions. Unknown technology mentions remain unresolved and force review when they affect routing.
+
+Safety thresholds:
+
+- confidence at least 0.78;
+- semantic integrity at least 0.80;
+- top result at least 0.10 above the next registered alternative.
+
+Return review-required for unsupported or unrecognized technology, unsatisfied constraints, conflicting requirements, prohibited stacks, low confidence, low integrity, close alternatives, evidence mismatch, unknown generators, or stale authorization metadata.
+
+There is no default generator for an unrecognized brief.
+
+## 8. Architecture Packet V2
+
+A successful registered proposal carries an additive, versioned packet containing:
+
+- stack identity;
+- intent summary and evidence;
+- primary component;
+- dynamic components;
+- architecture layers;
+- data flows referencing component IDs;
+- constraints and dependencies;
+- generator validation;
+- provenance with parent IDs, root ID, content hash, timestamps, and authorization metadata.
+
+Validation checks schema shape, selected stack, language, framework, domain, required components, layer references, generator version, and authorization policy hash.
+
+The packet is domain-neutral and can represent mobile physics, desktop UI, web API/accessibility, or future registered domains.
+
+## 9. Provider boundary
+
+Current adapters are:
+
+- MockAiProvider: deterministic, offline, explicit fallback or configured mock.
+- OllamaAiProvider: local HTTP discovery, structured proposal, and execution provider.
+
+Analysis and creation selections are independent and ephemeral. The Ollama catalog is manually refreshed and cloud-tagged models are excluded. The mock is explicit and must never be described as Ollama.
+
+Provider inputs are bounded and must not contain unrestricted workspace access, secrets, raw enrichment, or unsupported discoveries as authorization. Provider output is untrusted and must be parsed, schema-validated, size-limited, and reviewed.
+
+The normal API path passes confirmedBrief and AuthorizedSynthesisContext for final blueprint synthesis. Provider compatibility paths that accept a plain synthesis context remain a hardening gap.
+
+## 10. Persistence and ownership
+
+~~~text
+Blueprint
+  └── PromptArtifact
+        └── ExecutionRecord
+              ├── inputPrompt
+              ├── generatedOutput
+              ├── artifact metadata
+              ├── lifecycle timestamps
+              └── verificationNotes
+~~~
+
+SQLite stores blueprints, optional packet JSON, prompt artifacts, execution records, provider metadata, generated output, and verification notes.
+
+Current truth:
+
+- blueprints are mutable records, not immutable revisions;
+- prompt artifacts are versioned per blueprint;
+- verification notes are stored on executions, not in a separate append-only table;
+- executions do not independently carry complete authorization provenance;
+- packet and blueprint linkage provide the current trace;
+- generated code is not written into the repository.
+
+Changing these is a persistence and architecture change requiring a decision and migration plan.
+
+## 11. API boundary
+
+~~~text
+GET  /api/providers/status
+GET  /api/providers/models
+POST /api/architecture-discovery
+POST /api/blueprint-proposals
+POST /api/blueprints
+GET  /api/blueprints
+GET  /api/blueprints/:id
+POST /api/blueprints/:id/generate-prompt
+GET  /api/blueprints/:id/workspace
+GET  /api/blueprints/:id/generate/stream?filename=<CORE_DOCUMENT>&provider=<PROVIDER>&model=<MODEL>
+POST /api/blueprints/:id/generate-core-docs
+POST /api/blueprints/:id/reroll-doc
+GET  /api/blueprints/:id/prompt
+GET  /api/blueprints/:id/executions
+POST /api/executions
+GET  /api/executions/:id
+POST /api/executions/:id/verify
+~~~
+
+The streaming endpoint returns Server-Sent Events. Each content frame is `data: {"chunk":"..."}`; successful completion emits `data: {"status":"DONE"}`, and provider or transport failures emit an error status. The workspace opens one explicitly closed stream per requested core document and persists only completed output.
+
+Discovery review is a handled consultative state. Final proposal review is HTTP 422 with structured reasons and questions. Malformed requests return 400. Missing resources return 404. Unsupported requests do not create provider output or persisted blueprints.
+
+POST /api/blueprints is a separate trusted-input path. It bypasses AI discovery but not schema validation or persistence integrity.
+
+The document workspace treats the completed PRD execution as immutable source context. Core-document generation creates one prompt and execution record per requested filename; rerolling one filename creates a new record linked to the same PRD and leaves other document records unchanged. Generated documents remain reviewable artifacts and are exported client-side; the server does not write them into the repository.
+
+Blueprint cover art is a client-only enhancement. The web app validates and resizes PNG, JPEG, and WebP uploads before storing them in browser IndexedDB under the blueprint ID. Removing a blueprint also removes its local cover reference; no cover data is persisted in SQLite or sent to a provider.
+
+## 12. Security and change policy
+
+- Never place secrets, credentials, or sensitive source material in code, prompts, artifacts, logs, tests, or docs.
+- Treat enrichment, model output, and external responses as untrusted.
+- Keep authentication inside provider adapters.
+- Do not let providers redefine intent or silently expand scope.
+- Do not introduce direct repository mutation without explicit sandbox and approval policy.
+- Preserve unrelated worktree changes.
+- Prefer deterministic parsing, validation, planning, and state transitions.
+
+Ask for approval before changing public contracts, persistence, provider strategy, generator policy, security boundaries, direct repository mutation, major dependencies, or approval semantics.
+
+When an approved architectural change is made, update the ADR, this architecture record, tests, development plan, and BUILD_LOG.md in the same workstream.
+
+## 13. Invariants and known gaps
+
+Implemented invariants:
+
+1. Unknown or unsupported generators enter review-required.
+2. Enrichment cannot create authorization data.
+3. Final synthesis requires a confirmed registered generator.
+4. Failed registry validation blocks final provider synthesis in the application path.
+5. Unsupported or ambiguous briefs receive no default generator.
+6. Successful packets are validated against the selected generator.
+7. Provider/model selections are checked against the current catalog.
+8. Generated output remains proposed until human review.
+9. The provider boundary is replaceable.
+10. The application does not write generated code into the repository.
+
+Known gaps:
+
+1. Provider compatibility parameters can accept an unvalidated plain synthesis context outside the normal orchestrator path.
+2. Blueprint revisions are mutable.
+3. Verification notes are not separate append-only evidence records.
+4. Execution records do not independently carry full authorization provenance.
+5. Approval is primarily represented by the UI save action rather than a durable approval-state model.
+
+## 14. Related documents
+
+- [development-plan.md](development-plan.md): MVP scope, acceptance, roadmap, backlog, and verification.
+- [registry-generator-engine.md](registry-generator-engine.md): detailed registry and packet contract.
+- [codex-integration.md](codex-integration.md): provider and execution contract.
+- [ADR-001](adr/ADR-001-authority-model.md): accepted authority-boundary decision.
+- [RUN.md](RUN.md): reusable governing prompt and operating runbook.
+- [demo-script.md](demo-script.md): repeatable product story and demonstration.
+- [reports](reports/): historical API and workflow evidence.

@@ -1,7 +1,7 @@
 {
   "name": "the-vault-architect",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "AI-native architecture workflow foundation",
   "workspaces": [
     "apps/*",
@@ -32,5 +32,8 @@
     "better-sqlite3@11.10.0": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.1": true
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1"
   }
 }
