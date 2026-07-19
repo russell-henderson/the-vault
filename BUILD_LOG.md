@@ -1,5 +1,35 @@
 # The Vault Architect — Build Log
 
+## 2026-07-18 — Restore production Tailwind styling pipeline
+
+- **Origin and diagnosis:** Investigated the Vercel/local styling regression after the web workspace was moved to Tailwind 4 packages while retaining the existing Tailwind 3 directives and configuration. The production bundle contained authored component CSS but omitted utility classes used throughout the React UI.
+- **Correction:** Restored Tailwind 3, PostCSS, and Autoprefixer ownership to the workspace root; removed the incompatible web-local Tailwind 4 packages; and restored the classic `tailwindcss` PostCSS plugin. The authored `styles.css` visual rules were preserved.
+- **Verification:** `npm run build` passed and the generated stylesheet contains the expected utility rules and authored rules. `npm run typecheck` and `git diff --check` passed. The full suite reached 79 tests with 58 passing; 21 database-backed tests remain blocked by the existing `better-sqlite3` Node ABI 127/147 mismatch.
+
+## 2026-07-18 — Restore local API runtime
+
+- **Diagnosis:** The API workspace resolved `better-sqlite3` 11.x while the active Node runtime required ABI 147; the API could not construct its SQLite repository and exited before listening.
+- **Correction:** Aligned `apps/api` with the repository's `better-sqlite3` 12.x dependency and rebuilt the native module for the active Node runtime.
+- **Verification:** API is listening on port 3001; `GET /api/providers/status` returns the healthy deterministic mock provider; all 79 tests pass.
+
+## 2026-07-18 — Remove phi4-mini generation fallback
+
+- **Diagnosis:** Core-document generation could retain a stale `phi4-mini:3.8b` selection from the workspace URL, while the API extrapolation path could also select a phi4 fallback when `llama3.2:3b` was unavailable.
+- **Correction:** Removed phi4-mini from the Ollama catalog/UI allowlist, normalized stale workspace selections to `mock:deterministic-local`, rejected stale API selections, and removed the API's hard-coded phi4 fallback.
+- **Verification:** The live catalog no longer exposes phi4-mini, deterministic-local remains available, `npm run build`, `npm run typecheck`, and all 79 tests pass.
+
+## 2026-07-18 — Preserve Ollama model choice for document workspace
+
+- **Diagnosis:** Ollama-origin blueprints inherited the API's globally configured mock creation selection, so the workspace URL became `provider=mock&model=deterministic-local` even when `llama3.2:3b` was available.
+- **Correction:** The document handoff now prefers the available `llama3.2` model for Ollama-origin blueprints; explicit user selections remain unchanged, and mock remains available when Ollama is unavailable or explicitly chosen.
+- **Verification:** The live catalog reports `llama3.2:3b` available, while `npm run typecheck`, `npm run build`, and all 79 tests pass.
+
+## 2026-07-18 — Authorize browser SSE document streams
+
+- **Diagnosis:** Fastify CORS covered normal responses, but the hijacked raw SSE response bypassed the plugin hook and omitted `Access-Control-Allow-Origin`.
+- **Correction:** The streaming response now reflects the request origin and sends `Vary: Origin` alongside the SSE headers.
+- **Verification:** The exact document stream from `http://localhost:5173` to `http://localhost:3001` returns HTTP 200, `text/event-stream`, `Access-Control-Allow-Origin: http://localhost:5173`, and a terminal `DONE` event. The focused API workflow test and typecheck pass.
+
 ## 2026-07-18 — Phase 7 SSE streaming and premium vault dashboard
 
 - **Origin and decision:** Implemented the approved real-time document generation and Dashboard overhaul while preserving the existing provider, persistence, and human-review boundaries.
@@ -298,3 +328,9 @@ For each meaningful milestone, record the date, model used, repository state, ma
 * **Human Decisions:** Requested a premium direct-disk sync mechanism and explicit save/discard workflows.
 * **AI Contributions:** Implemented file system write controllers, added localStorage hooks, built React uncommitted change state logic, and updated typescript definitions.
 * **Verification Results:** All **73 test cases passed successfully**. `npm run typecheck` and `git diff --check` passed.
+## 2026-07-18 — Explicit model selection and OpenRouter embedding evaluation
+
+- **Decision:** Remove automatic analysis/creation model selection from the UI and stop using silent Ollama model fallbacks. Existing generation adapters remain unchanged when a user explicitly chooses a local model.
+- **Stale-selection handling:** Removed phi4 and stale model URLs now clear the selection instead of silently switching to `mock:deterministic-local`.
+- **Embedding boundary:** Added the server-side `OpenRouterEmbeddingProvider` and catalog entry for `nvidia/llama-nemotron-embed-vl-1b-v2:free`. The model is exposed as an embedding evaluation choice, not as a text-generation model, and `OPENROUTER_API_KEY` is never exposed to the browser.
+- **Verification:** The provider catalog shows local generation models and the OpenRouter embedding model separately; generation routes reject embedding selections; the mocked SDK contract returns a bounded vector preview. `npm test` passes with 18 files and 80 tests; `npm run typecheck`, `npm run build`, and `git diff --check` pass. The live probe correctly returns a controlled missing-key response until `OPENROUTER_API_KEY` is configured.

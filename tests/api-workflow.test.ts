@@ -194,9 +194,10 @@ describe("blueprint API workflow", () => {
     const promptId = promptGen.json<{ promptArtifact: { id: string } }>().promptArtifact.id;
     await app.inject({ method: "POST", url: "/api/executions", payload: { promptArtifactId: promptId, provider: "mock" } });
 
-    const stream = await app.inject({ method: "GET", url: `/api/blueprints/${blueprintId}/generate/stream?filename=README.md&provider=mock&model=deterministic-local` });
+    const stream = await app.inject({ method: "GET", url: `/api/blueprints/${blueprintId}/generate/stream?filename=README.md&provider=mock&model=deterministic-local`, headers: { origin: "http://localhost:5173" } });
     expect(stream.statusCode).toBe(200);
     expect(stream.headers["content-type"]).toContain("text/event-stream");
+    expect(stream.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
     expect(stream.body).toContain('"chunk"');
     expect(stream.body).toContain('"status":"DONE"');
     const workspace = repository.listExecutionRecords(blueprintId).find((record) => record.documentFilename === "README.md");

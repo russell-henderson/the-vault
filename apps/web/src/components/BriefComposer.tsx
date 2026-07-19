@@ -4,11 +4,12 @@ import { api } from "../lib/api";
 import { BlueprintProposal as BlueprintProposalCard } from "./BlueprintProposal";
 import { ProviderStatus } from "./ProviderStatus";
 import { ProviderRoleControl } from "./ProviderRoleControl";
+import { EmbeddingModelProbe } from "./EmbeddingModelProbe";
 
 export function BriefComposer({ providerStatus, catalog, catalogLoading, onRefreshCatalog, onApprove, onManual, onCancel }: { providerStatus?: ProviderStatusData; catalog?: ProviderCatalog; catalogLoading: boolean; onRefreshCatalog: () => Promise<boolean>; onApprove: (proposal: BlueprintProposal) => Promise<void>; onManual: (brief?: string, autoFill?: boolean) => void; onCancel: () => void }) {
   const [brief, setBrief] = useState("Build an app that helps people track and understand their daily habits.");
-  const defaultSelection: ProviderSelection = catalog?.configured.analysis ?? (providerStatus?.configured.name === "ollama" ? { provider: "ollama", model: providerStatus.models?.analysis ?? providerStatus.configured.model } : { provider: "mock", model: "deterministic-local" });
-  const [analysisSelection, setAnalysisSelection] = useState<ProviderSelection>(defaultSelection);
+  const initialProvider = catalog?.configured.analysis.provider ?? (providerStatus?.configured.name === "ollama" ? "ollama" : "mock");
+  const [analysisSelection, setAnalysisSelection] = useState<ProviderSelection>({ provider: initialProvider });
   const [discovery, setDiscovery] = useState<DiscoveryResult>();
   const [selectedStack, setSelectedStack] = useState<string>();
   const [proposal, setProposal] = useState<BlueprintProposal>();
@@ -16,9 +17,9 @@ export function BriefComposer({ providerStatus, catalog, catalogLoading, onRefre
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  useEffect(() => { if (catalog && analysisSelection.provider === "ollama" && !analysisSelection.model) setAnalysisSelection(catalog.configured.analysis); }, [catalog, analysisSelection.model, analysisSelection.provider]);
+  useEffect(() => { if (catalog && !analysisSelection.model && analysisSelection.provider !== catalog.configured.analysis.provider) setAnalysisSelection({ provider: catalog.configured.analysis.provider }); }, [catalog, analysisSelection.model, analysisSelection.provider]);
   const selectedOption = catalog?.models.find((option) => option.provider === analysisSelection.provider && option.model === analysisSelection.model);
-  const selectionUnavailable = analysisSelection.provider === "ollama" && (!selectedOption || !selectedOption.available);
+  const selectionUnavailable = !analysisSelection.model || (analysisSelection.provider !== "mock" && (!selectedOption || !selectedOption.available));
 
   function resetDiscovery() { setDiscovery(undefined); setSelectedStack(undefined); setError(""); }
 
@@ -123,7 +124,7 @@ export function BriefComposer({ providerStatus, catalog, catalogLoading, onRefre
               <div className="flex items-center gap-2">
                 <ProviderRoleControl role="analysis" catalog={catalog} loading={catalogLoading} selection={analysisSelection} onChange={setAnalysisSelection} onRefresh={onRefreshCatalog} />
               </div>
-              <span className="text-[10px] text-slate-400 font-medium tracking-wide">Configured default</span>
+              <span className="text-[10px] text-slate-400 font-medium tracking-wide">Choose a model before running</span>
             </div>
 
             {/* Right Side */}
@@ -147,6 +148,7 @@ export function BriefComposer({ providerStatus, catalog, catalogLoading, onRefre
               )}
             </div>
           </div>
+          <EmbeddingModelProbe options={catalog?.embeddingModels ?? []} loading={catalogLoading} />
         </form>
 
         {/* Tags horizontal flex row */}

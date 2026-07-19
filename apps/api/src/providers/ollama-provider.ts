@@ -13,6 +13,10 @@ export function localModelNames(models: string[]): string[] {
   return [...new Set(models.map((model) => model.trim()).filter((model) => model && !isCloudModel(model)))].sort((left, right) => left.localeCompare(right));
 }
 
+export function isRemovedOllamaModel(model?: string): boolean {
+  return model?.toLowerCase().startsWith("phi4-mini") ?? false;
+}
+
 const blueprintResponseFormat = {
   type: "object",
   additionalProperties: false,
@@ -174,14 +178,19 @@ function normalizeProposal(value: unknown, brief: string, request: StrictBluepri
 export class OllamaAiProvider implements AiProvider {
   readonly name = "ollama";
   readonly baseUrl: string;
-  readonly analysisModel: string;
-  readonly creationModel: string;
-  get model(): string { return this.creationModel; }
+  readonly analysisModel?: string;
+  readonly creationModel?: string;
+  get model(): string | undefined { return this.creationModel; }
 
-  constructor(baseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434", analysisModel = process.env.OLLAMA_ANALYSIS_MODEL ?? process.env.OLLAMA_MODEL ?? "llama3.2:3b", creationModel = process.env.OLLAMA_CREATION_MODEL ?? process.env.OLLAMA_MODEL ?? "dolphin3:8b") {
+  constructor(baseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434", analysisModel = process.env.OLLAMA_ANALYSIS_MODEL ?? process.env.OLLAMA_MODEL, creationModel = process.env.OLLAMA_CREATION_MODEL ?? process.env.OLLAMA_MODEL) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
-    this.analysisModel = analysisModel;
-    this.creationModel = creationModel;
+    this.analysisModel = isRemovedOllamaModel(analysisModel) ? undefined : analysisModel;
+    this.creationModel = isRemovedOllamaModel(creationModel) ? undefined : creationModel;
+  }
+
+  private requireModel(model: string | undefined, role: "analysis" | "creation"): string {
+    if (!model) throw new Error(`Choose an Ollama ${role} model before running this action.`);
+    return model;
   }
 
   async validate(prompt: string) {
@@ -190,40 +199,44 @@ export class OllamaAiProvider implements AiProvider {
 
   async generate(request: AiGenerateRequest): Promise<AiGenerateResult> {
     const started = Date.now();
-    const response = await this.request({ model: this.creationModel, prompt: request.prompt, stream: false });
-    return { artifactType: "ollama-response", artifactLocation: `ollama://${this.creationModel}/executions/${request.executionId}`, output: response.response ?? "", metadata: { name: this.name, model: this.creationModel, durationMs: Date.now() - started } };
+    const model = this.requireModel(this.creationModel, "creation");
+    const response = await this.request({ model, prompt: request.prompt, stream: false });
+    return { artifactType: "ollama-response", artifactLocation: `ollama://${model}/executions/${request.executionId}`, output: response.response ?? "", metadata: { name: this.name, model, durationMs: Date.now() - started } };
   }
 
   async generateDiscovery(request: DiscoveryGenerateRequest): Promise<DiscoveryGenerateResult> {
     const started = Date.now();
-    const response = await this.request({ model: this.analysisModel, system: discoveryInstruction(request), prompt: request.brief, stream: false, format: discoveryResponseFormat });
+    const model = this.requireModel(this.analysisModel, "analysis");
+    const response = await this.request({ model, system: discoveryInstruction(request), prompt: request.brief, stream: false, format: discoveryResponseFormat });
     let parsed: unknown;
     try { parsed = JSON.parse(cleanJson(response.response ?? "")); } catch { throw new Error("Ollama returned invalid JSON for architecture discovery"); }
     const result = discoveryModelResultSchema.safeParse(parsed);
     if (!result.success) throw new Error(`Ollama discovery validation failed: ${result.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
-    const metadata = { name: this.name, model: this.analysisModel, durationMs: Date.now() - started } as const;
+    const metadata = { name: this.name, model, durationMs: Date.now() - started } as const;
     return { result: result.data, metadata };
   }
 
   async generateBlueprint(request: BlueprintGenerateRequest): Promise<BlueprintGenerateResult> {
     const strictRequest = strictBlueprintRequest(request);
     const started = Date.now();
-    const response = await this.request({ model: this.analysisModel, system: strictRequest.instruction ?? synthesisInstruction(strictRequest), prompt: strictRequest.brief, stream: false, format: blueprintResponseFormat });
+    const model = this.requireModel(this.analysisModel, "analysis");
+    const response = await this.request({ model, system: strictRequest.instruction ?? synthesisInstruction(strictRequest), prompt: strictRequest.brief, stream: false, format: blueprintResponseFormat });
     let parsed: unknown;
     try { parsed = JSON.parse(cleanJson(response.response ?? "")); } catch { throw new Error("Ollama returned invalid JSON for the blueprint proposal"); }
-    const metadata = { name: this.name, model: this.analysisModel, durationMs: Date.now() - started } as const;
+    const metadata = { name: this.name, model, durationMs: Date.now() - started } as const;
     const proposal = blueprintProposalSchema.omit({ provider: true }).safeParse(normalizeProposal(parsed, strictRequest.brief, strictRequest));
     if (!proposal.success) throw new Error(`Ollama blueprint validation failed: ${proposal.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
     return { proposal: { ...proposal.data, provider: metadata }, metadata };
   }
 
   async *stream(request: AiGenerateRequest): AsyncIterable<string> {
+    const model = this.requireModel(this.creationModel, "creation");
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}/api/generate`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ model: this.creationModel, prompt: request.prompt, stream: true }),
+        body: JSON.stringify({ model, prompt: request.prompt, stream: true }),
         signal: request.signal
       });
     } catch (error) {
@@ -272,20 +285,21 @@ export class OllamaAiProvider implements AiProvider {
       if (!response.ok) return { available: false, detail: `Ollama returned HTTP ${response.status}`, models: { analysis: this.analysisModel, creation: this.creationModel } };
       const body = await response.json() as OllamaTagsResponse;
       const names = (body.models ?? []).map((model) => model.name ?? "");
-      const analysisInstalled = names.some((name) => name === this.analysisModel || name.startsWith(`${this.analysisModel}:`));
-      const creationInstalled = names.some((name) => name === this.creationModel || name.startsWith(`${this.creationModel}:`));
-      const missing = [!analysisInstalled ? `analysis model ${this.analysisModel}` : "", !creationInstalled ? `creation model ${this.creationModel}` : ""].filter(Boolean);
-      return { available: missing.length === 0, detail: missing.length === 0 ? `Ollama is ready with analysis and creation models` : `Ollama is running, but ${missing.join(" and ")} ${missing.length === 1 ? "is" : "are"} not installed`, models: { analysis: this.analysisModel, creation: this.creationModel } };
+      const analysisInstalled = this.analysisModel ? names.some((name) => name === this.analysisModel || name.startsWith(`${this.analysisModel}:`)) : false;
+      const creationInstalled = this.creationModel ? names.some((name) => name === this.creationModel || name.startsWith(`${this.creationModel}:`)) : false;
+      const missing = [!this.analysisModel ? "an analysis model has not been selected" : !analysisInstalled ? `analysis model ${this.analysisModel} is not installed` : "", !this.creationModel ? "a creation model has not been selected" : !creationInstalled ? `creation model ${this.creationModel} is not installed` : ""].filter(Boolean);
+      return { available: missing.length === 0, detail: missing.length === 0 ? `Ollama is ready with analysis and creation models` : `Ollama is running, but ${missing.join(" and ")}`, models: { analysis: this.analysisModel, creation: this.creationModel } };
     } catch { return { available: false, detail: `Ollama is unavailable at ${this.baseUrl}`, models: { analysis: this.analysisModel, creation: this.creationModel } }; }
   }
 
   async catalog(configured: { analysis: ProviderSelection; creation: ProviderSelection }): Promise<ProviderCatalog> {
     const refreshedAt = new Date().toISOString();
     const result = await this.listModels();
-    const localModels = localModelNames(result.models);
+    const localModels = localModelNames(result.models).filter((model) => !isRemovedOllamaModel(model));
     const configuredModels = [configured.analysis, configured.creation]
       .filter((selection) => selection.provider === "ollama" && selection.model)
-      .map((selection) => selection.model as string);
+      .map((selection) => selection.model as string)
+      .filter((model) => !isRemovedOllamaModel(model));
     const allModels = [...localModels, ...configuredModels.filter((model) => !localModels.includes(model) && !isCloudModel(model))];
     const options: ProviderModelOption[] = allModels.map((model) => ({ provider: "ollama", model, label: model, available: localModels.includes(model), cloud: isCloudModel(model) }));
     options.push({ provider: "mock", model: "deterministic-local", label: "Deterministic mock", available: true, cloud: false });

@@ -8,7 +8,7 @@ export type BlueprintGenerateRequest = { brief?: string; confirmedBrief?: string
 export type BlueprintGenerateResult = { proposal: BlueprintProposal; metadata: ProviderMetadata };
 export type DiscoveryGenerateRequest = { brief: string; registrySlice: DiscoveryRegistryOption[]; constraints: Omit<ConstraintExtraction, "versions" | "unresolvedMentions"> & Partial<Pick<ConstraintExtraction, "versions" | "unresolvedMentions">> };
 export type DiscoveryGenerateResult = { result: DiscoveryModelResult; metadata: ProviderMetadata };
-export type ProviderHealth = { available: boolean; detail: string; model?: string; models?: { analysis: string; creation: string } };
+export type ProviderHealth = { available: boolean; detail: string; model?: string; models?: { analysis?: string; creation?: string } };
 
 export interface AiProvider {
   readonly name: string;

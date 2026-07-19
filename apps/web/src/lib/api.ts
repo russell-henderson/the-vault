@@ -46,6 +46,7 @@ export const api = {
   listBlueprints: () => request<Blueprint[]>("/api/blueprints"),
   getProviderStatus: () => request<ProviderStatus>("/api/providers/status"),
   getProviderCatalog: () => request<ProviderCatalog>("/api/providers/models"),
+  testEmbedding: (input: { model: string; text: string; imageUrl?: string }) => request<{ model: string; dimensions: number; preview: number[]; usage?: { promptTokens?: number; totalTokens?: number } }>("/api/providers/embeddings/test", { method: "POST", body: JSON.stringify(input) }),
   analyzeArchitecture: (brief: string, provider: "configured" | "mock" = "configured", analysis?: ProviderSelection) => request<DiscoveryResult>("/api/architecture-discovery", { method: "POST", body: JSON.stringify({ brief, provider, ...(analysis ? { analysis } : {}) }) }),
   generateBlueprintProposal: (brief: string, generatorId: string, discovery?: DiscoveryResult, provider: "configured" | "mock" = "configured", analysis?: ProviderSelection) => request<BlueprintProposal>("/api/blueprint-proposals", { method: "POST", body: JSON.stringify({ brief, generatorId, provider, ...(analysis ? { analysis } : {}), ...(discovery ? { discovery } : {}) }) }),
   getBlueprint: (id: string) => request<Blueprint>(`/api/blueprints/${id}`),

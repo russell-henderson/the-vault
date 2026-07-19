@@ -85,11 +85,12 @@ Configure the API with `.env.example` values or environment variables:
 ```bash
 AI_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_ANALYSIS_MODEL=llama3.2:3b
-OLLAMA_CREATION_MODEL=dolphin3:8b
+# Choose the analysis and creation models from the dashboard catalog.
+# Optional preconfiguration: OLLAMA_ANALYSIS_MODEL=... and OLLAMA_CREATION_MODEL=...
+# Optional embedding evaluation: OPENROUTER_API_KEY=...
 ```
 
-The dashboard reports provider health and the active model. Refresh the catalog after pulling a new local model. Cloud-tagged models are excluded from selection.
+The dashboard reports provider health and requires an explicit model choice for each generation role. Refresh the catalog after pulling a new local model. Cloud-tagged models are excluded from generation selection. If `OPENROUTER_API_KEY` is configured, the dashboard also exposes the multimodal embedding model `nvidia/llama-nemotron-embed-vl-1b-v2:free` as a separate evaluation choice.
 
 ## Product walkthrough
 

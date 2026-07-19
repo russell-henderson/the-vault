@@ -31,7 +31,7 @@ The MVP is for one technical user in one local workspace. It is not a team colla
 - Human review and approval of generated proposals.
 - Deterministic prompt compilation.
 - Independent analysis and creation provider/model selection.
-- Ollama local provider and deterministic mock provider.
+- Ollama local provider, deterministic mock provider, and an explicit OpenRouter embedding evaluation adapter.
 - SQLite persistence for blueprints, packets, prompts, executions, and notes.
 - Execution lifecycle and normalized provider metadata.
 - Human verification notes.
@@ -101,7 +101,7 @@ The registry controls capability expansion. Enrichment and models cannot introdu
 - Normal provider input excludes raw enrichment and analyzer reasoning.
 - Successful synthesis produces a valid Architecture Packet V2.
 - Packet components, references, generator version, and provenance are validated before approval.
-- Mock and Ollama use a provider-neutral boundary.
+- Mock and Ollama use a provider-neutral generation boundary; OpenRouter embeddings remain a separate capability boundary.
 
 ### Review and evidence
 
@@ -201,7 +201,7 @@ Current record:
 - focused rendering, API-client, provider, and export checks pass with 19 tests;
 - the live API mutation flow has been verified for tag persistence and blueprint deletion;
 - release `v1.0.0` is tagged and merged into local `main`;
-- the full suite currently reports 58 passing tests and 21 database-backed tests blocked by a better-sqlite3 ABI mismatch, which is an environment blocker rather than evidence of an application logic failure.
+- the full suite currently reports 79 passing tests after aligning and rebuilding `better-sqlite3` for the active Node runtime; the local API is verified on port 3001 with `GET /api/providers/status`.
 
 ## 11. Release rule
 

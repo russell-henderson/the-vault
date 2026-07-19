@@ -98,7 +98,11 @@ export function BlueprintWorkspace({ id, catalog, onNavigate }: { id: string; ca
     const query = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.hash.split("?")[1] ?? "");
     const queryProvider = query.get("provider");
     const queryModel = query.get("model");
-    if ((queryProvider === "mock" || queryProvider === "ollama") && queryModel) setSelection({ provider: queryProvider, model: queryModel });
+    if ((queryProvider === "mock" || queryProvider === "ollama") && queryModel) {
+      setSelection(queryProvider === "ollama" && queryModel.toLowerCase().startsWith("phi4-mini")
+        ? { provider: "ollama" }
+        : { provider: queryProvider, model: queryModel });
+    } else setSelection(undefined);
     void api.getWorkspace(id).then((result) => {
       if (cancelled) return;
       setWorkspace(result);
@@ -113,10 +117,8 @@ export function BlueprintWorkspace({ id, catalog, onNavigate }: { id: string; ca
     return () => { cancelled = true; };
   }, [id]);
 
-  useEffect(() => { if (!selection && catalog) setSelection(catalog.configured.creation); }, [catalog, selection]);
-
   useEffect(() => {
-    if (!workspace || requestedFiles.length === 0) return;
+    if (!workspace || requestedFiles.length === 0 || !selection?.model) return;
     let cancelled = false;
     const filename = requestedFiles[0] as CoreDocumentFilename;
     let buffer = "";
@@ -150,7 +152,7 @@ export function BlueprintWorkspace({ id, catalog, onNavigate }: { id: string; ca
       }
     });
     return () => { cancelled = true; source.close(); };
-  }, [id, Boolean(workspace), requestedFiles]);
+  }, [id, Boolean(workspace), requestedFiles, selection]);
 
   const activeDocument = useMemo(() => workspace?.documents.find((document) => document.filename === selectedFilename) ?? workspace?.documents[0], [selectedFilename, workspace]);
   const activeContent = activeDocument ? editedContent[activeDocument.filename] ?? (streamingFilename === activeDocument.filename ? liveStreamContent : activeDocument.content) : "";
@@ -276,7 +278,7 @@ export function BlueprintWorkspace({ id, catalog, onNavigate }: { id: string; ca
     {/* Read-Only Status Bar (Replaces model selector controls) */}
     <div className="flex items-center gap-2 mb-6">
       <span className="text-xs text-white/60 bg-white/5 border border-white/10 rounded-full px-3 py-1 flex items-center gap-1.5 select-none">
-        <span>⚡ Model:</span> <span className="font-semibold text-white">{selection?.model || "Configured default"}</span>
+        <span>⚡ Model:</span> <span className="font-semibold text-white">{selection?.model || "Choose a model"}</span>
       </span>
       <span className="text-xs text-white/60 bg-white/5 border border-white/10 rounded-full px-3 py-1 flex items-center gap-1.5 select-none">
         <span>🔒 PRD Source:</span> <span className="font-semibold text-emerald-400">{workspace.prdExecutionId ? "Linked" : "Missing"}</span>

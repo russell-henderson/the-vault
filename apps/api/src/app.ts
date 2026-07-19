@@ -1,12 +1,13 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { generateCodexPrompt, generateContextSummary, generateCoreDocumentPrompt } from "@the-vault/prompts";
-import { blueprintInputSchema, blueprintMutationSchema, blueprintProposalSchema, blueprintWorkspaceSchema, briefInputSchema, discoveryInputSchema, discoveryResultSchema, executionCreateSchema, generateCoreDocsInputSchema, providerStatusSchema, rerollDocumentInputSchema, validationReportSchema, verificationInputSchema, type BlueprintWorkspace, type CoreDocumentFilename, type ExecutionRecord, type ProviderSelection, type WorkspaceDocument } from "@the-vault/shared";
+import { blueprintInputSchema, blueprintMutationSchema, blueprintProposalSchema, blueprintWorkspaceSchema, briefInputSchema, discoveryInputSchema, discoveryResultSchema, embeddingProbeSchema, executionCreateSchema, generateCoreDocsInputSchema, providerStatusSchema, rerollDocumentInputSchema, validationReportSchema, verificationInputSchema, type BlueprintWorkspace, type CoreDocumentFilename, type ExecutionRecord, type ProviderSelection, type WorkspaceDocument } from "@the-vault/shared";
 import { VaultRepository } from "./repository.js";
 import { MockAiProvider } from "./providers/mock-provider.js";
 import type { AiProvider } from "./providers/types.js";
 import { createConfiguredProvider } from "./providers/configured-provider.js";
-import { OllamaAiProvider } from "./providers/ollama-provider.js";
+import { isRemovedOllamaModel, OllamaAiProvider } from "./providers/ollama-provider.js";
+import { OpenRouterEmbeddingProvider } from "./providers/openrouter-embedding-provider.js";
 import { ExecutionService } from "./services/execution-service.js";
 import { ArchitectureAnalyzer } from "./services/architecture-analyzer.js";
 import { ArchitectureOrchestrator } from "./services/architecture-orchestrator.js";
@@ -60,6 +61,7 @@ function selectionFromLegacy(providerName: "configured" | "mock", currentProvide
 
 function providerForSelection(selection: ProviderSelection, role: "analysis" | "creation", currentProvider: AiProvider): AiProvider {
   if (selection.provider === "mock") return new MockAiProvider(true);
+  if (selection.provider !== "ollama") throw new Error("Embedding models can only be used through the embedding evaluation action.");
   const baseUrl = currentProvider instanceof OllamaAiProvider ? currentProvider.baseUrl : undefined;
   const configured = configuredSelections(currentProvider);
   const analysisModel = role === "analysis" ? selection.model : configured.analysis.model;
@@ -71,19 +73,25 @@ function invalidMockSelection(selection: ProviderSelection): boolean {
   return selection.provider === "mock" && Boolean(selection.model) && selection.model !== mockSelection.model;
 }
 
+function invalidGenerationSelection(selection: ProviderSelection): boolean {
+  return selection.provider === "openrouter";
+}
+
 export function buildApp(repository = new VaultRepository(process.env.VAULT_DATABASE_PATH ?? "apps/api/data/vault.db"), provider: AiProvider = createConfiguredProvider()): FastifyInstance {
   const app = Fastify({ logger: true });
   void app.register(cors, { origin: true });
   const executionService = new ExecutionService(repository, provider);
   const architectureOrchestrator = new ArchitectureOrchestrator();
   const architectureAnalyzer = new ArchitectureAnalyzer(architectureOrchestrator.registry);
+  const openRouterEmbeddings = new OpenRouterEmbeddingProvider();
 
   async function unavailableCreationSelection(selection: ProviderSelection): Promise<string | undefined> {
     if (invalidMockSelection(selection)) return "The selected mock model is not available in the current local catalog.";
+    if (invalidGenerationSelection(selection)) return "Embedding models are only available through the embedding evaluation action.";
     if (selection.provider !== "ollama") return undefined;
     const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
     const inventory = await ollama.listModels();
-    if (!selection.model || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) return "The selected creation model is not available in the current local catalog.";
+    if (!selection.model || isRemovedOllamaModel(selection.model) || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) return "The selected creation model is not available in the current local catalog.";
     return undefined;
   }
 
@@ -121,7 +129,18 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
   app.get("/api/providers/models", async () => {
     const configured = configuredSelections(provider);
     const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
-    return ollama.catalog(configured);
+    const catalog = await ollama.catalog(configured);
+    return { ...catalog, embeddingModels: [openRouterEmbeddings.catalogOption()] };
+  });
+
+  app.post("/api/providers/embeddings/test", async (request, reply) => {
+    const parsed = embeddingProbeSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid embedding test request", issues: parsed.error.flatten() });
+    try {
+      return await openRouterEmbeddings.embed(parsed.data);
+    } catch (error) {
+      return reply.code(502).send({ error: "Embedding request failed", message: error instanceof Error ? error.message : "The embedding provider returned an unknown error." });
+    }
   });
 
   app.post("/api/architecture-discovery", async (request, reply) => {
@@ -129,10 +148,11 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
     if (!parsed.success) return reply.code(400).send({ error: "Invalid discovery brief", issues: parsed.error.flatten() });
     const selection = parsed.data.analysis ?? selectionFromLegacy(parsed.data.provider, provider, "analysis");
     if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
+    if (invalidGenerationSelection(selection)) return reply.code(400).send({ error: "Unsupported generation model", message: "Embedding models are only available through the embedding evaluation action." });
     if (selection.provider === "ollama") {
       const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
       const inventory = await ollama.listModels();
-      if (!selection.model || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) {
+      if (!selection.model || isRemovedOllamaModel(selection.model) || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) {
         return reply.code(400).send({ error: "Unavailable provider model", message: "The selected analysis model is not available in the current local catalog." });
       }
     }
@@ -161,15 +181,16 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
     const preparation = architectureOrchestrator.prepare(parsed.data.brief, parsed.data.generatorId, discovery);
     if (preparation.status !== "ready") return reply.code(422).send({ status: "review-required", classification: preparation.classification, constraints: preparation.constraints, reasons: preparation.reasons, questions: preparation.questions, registryValidation: preparation.registryValidation, availableGenerators: architectureOrchestrator.registry.listCapabilities() });
     const selection = parsed.data.analysis ?? selectionFromLegacy(parsed.data.provider, provider, "analysis");
-    const selectedProvider = providerForSelection(selection, "analysis", provider);
     if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
+    if (invalidGenerationSelection(selection)) return reply.code(400).send({ error: "Unsupported generation model", message: "Embedding models are only available through the embedding evaluation action." });
     if (selection.provider === "ollama") {
       const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
       const inventory = await ollama.listModels();
-      if (!selection.model || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) {
+       if (!selection.model || isRemovedOllamaModel(selection.model) || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) {
         return reply.code(400).send({ error: "Unavailable provider model", message: "The selected analysis model is not available in the current local catalog." });
       }
     }
+    const selectedProvider = providerForSelection(selection, "analysis", provider);
     try {
       const result = await selectedProvider.generateBlueprint(architectureOrchestrator.buildAuthorizedProviderRequest(preparation));
       const handoff = { registryVersion: preparation.authorization.registryVersion, discoveryUsed: preparation.authorization.discoveryUsed, selectedFromDiscovery: discovery?.likelyStackOptions.some((option) => option.stackId === preparation.generator.stackId) ? preparation.generator.stackId : null, confirmedByUser: true };
@@ -226,6 +247,7 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
     if (!promptArtifact) return reply.code(404).send({ error: "Prompt artifact not found" });
     const selection = parsed.data.creation ?? selectionFromLegacy(parsed.data.provider, provider, "creation");
     if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
+    if (invalidGenerationSelection(selection)) return reply.code(400).send({ error: "Unsupported generation model", message: "Embedding models are only available through the embedding evaluation action." });
     if (selection.provider === "ollama") {
       const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
       const inventory = await ollama.listModels();
@@ -273,11 +295,14 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
     request.raw.once("close", onClose);
 
     reply.hijack();
+    const requestOrigin = request.headers.origin;
     reply.raw.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       "Connection": "keep-alive",
-      "X-Accel-Buffering": "no"
+      "X-Accel-Buffering": "no",
+      "Access-Control-Allow-Origin": requestOrigin ?? "*",
+      "Vary": "Origin"
     });
     const send = (payload: Record<string, unknown>) => {
       if (!closed && !reply.raw.destroyed) reply.raw.write(`data: ${JSON.stringify(payload)}\n\n`);
@@ -360,22 +385,12 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
       "Do not output markdown code blocks or any text outside of the raw JSON object."
     ].join("\n");
 
-    let model = requestedModel;
-    if (!model) {
-      model = "llama3.2:3b";
-      if (provider.name === "ollama" || provider instanceof OllamaAiProvider) {
-        const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
-        const inventory = await ollama.listModels();
-        const models = inventory.models || [];
-        if (!models.includes("llama3.2:3b") && models.includes("phi4-mini")) {
-          model = "phi4-mini";
-        }
-      }
+    if (provider.name !== "mock" && (!requestedModel || isRemovedOllamaModel(requestedModel))) {
+      return reply.code(400).send({ error: "An Ollama model must be selected before extrapolation." });
     }
-
     const selection: ProviderSelection = provider.name === "mock"
       ? { provider: "mock", model: "deterministic-local" }
-      : { provider: "ollama", model };
+      : { provider: "ollama", model: requestedModel };
 
     const selectedProvider = providerForSelection(selection, "analysis", provider);
     const fullPrompt = `${systemPrompt}\n\n## Project Description:\n${description}`;

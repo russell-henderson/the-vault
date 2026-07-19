@@ -18,7 +18,7 @@ export function ProviderRoleControl({ role, catalog, loading, selection, onChang
       <button className="button-secondary refresh-button" type="button" onClick={() => void refresh()} disabled={loading} aria-label="Refresh provider catalog" aria-busy={loading}>{loading ? <><span className="inline-spinner" /> Refreshing…</> : "↻ Refresh catalog"}</button>
     </div>
     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500" aria-live="polite">
-      {configured && <span>Configured default: <span className="font-mono text-slate-400">{configured.provider} · {configured.model ?? "default"}</span></span>}
+      {configured && <span>Configured provider: <span className="font-mono text-slate-400">{configured.provider}</span></span>}
       {unavailable && <span className="text-amber-200">Selected model is unavailable. Choose another model before running.</span>}
       {feedback && <span className={feedback.startsWith("Unable") ? "text-rose-200" : "text-emerald-200"}>{feedback}</span>}
     </div>

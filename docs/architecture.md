@@ -48,7 +48,7 @@ Historical reports record what passed in their recorded environment. They do not
 | Contracts | Shared Zod schemas in packages/shared |
 | Policy and prompts | packages/prompts |
 | Persistence | SQLite through better-sqlite3 and VaultRepository |
-| Providers | Local Ollama and deterministic mock adapters |
+| Providers | Local Ollama, deterministic mock, and server-side OpenRouter embedding adapter |
 | Verification | Vitest unit, integration, contract, and workflow tests |
 | Runtime | Local modular monolith with a replaceable provider boundary |
 
@@ -115,7 +115,7 @@ Reviewable history and optional full-trace export
 - ArchitectureOrchestrator for final authorization and provider-context construction.
 - ExecutionService for provider validation and lifecycle transitions.
 - VaultRepository for SQLite persistence.
-- AiProvider, OllamaAiProvider, and MockAiProvider for normalized provider behavior.
+- AiProvider, OllamaAiProvider, and MockAiProvider for normalized generation behavior; OpenRouterEmbeddingProvider is isolated to embedding evaluation.
 
 ## 5. Authority and trust model
 
@@ -214,6 +214,7 @@ Current adapters are:
 
 - MockAiProvider: deterministic, offline, explicit fallback or configured mock.
 - OllamaAiProvider: local HTTP discovery, structured proposal, and execution provider.
+- OpenRouterEmbeddingProvider: server-side multimodal embedding probe using the explicitly selected `nvidia/llama-nemotron-embed-vl-1b-v2:free` model. It is not a text-generation provider and cannot be selected for blueprint or document generation.
 
 Analysis and creation selections are independent and ephemeral. The Ollama catalog is manually refreshed and cloud-tagged models are excluded. The mock is explicit and must never be described as Ollama.
 
@@ -221,7 +222,7 @@ Provider inputs are bounded and must not contain unrestricted workspace access, 
 
 The normal API path passes confirmedBrief and AuthorizedSynthesisContext for final blueprint synthesis. Provider compatibility paths that accept a plain synthesis context remain a hardening gap.
 
-Provider configuration is local and environment-based. `AI_PROVIDER=ollama` selects Ollama as the configured default, `OLLAMA_BASE_URL` defaults to `http://localhost:11434`, `OLLAMA_ANALYSIS_MODEL` defaults to `llama3.2:3b`, and `OLLAMA_CREATION_MODEL` defaults to `dolphin3:8b`. The deterministic mock is always available for offline development. The UI can select analysis and creation models independently; the API validates selections against the refreshed local catalog and records the selected provider metadata.
+Provider configuration is local and environment-based. `AI_PROVIDER=ollama` selects Ollama as the configured provider and `OLLAMA_BASE_URL` defaults to `http://localhost:11434`; no analysis or creation model is silently selected. The deterministic mock remains available as an explicit catalog option for offline development. The UI requires an explicit analysis and creation model choice, while the API retains legacy configured/mock request compatibility. `OPENROUTER_API_KEY` enables the separate embedding evaluation route; the key stays on the API server and is never sent to the browser.
 
 Execution follows one bounded lifecycle: create a pending record, validate the provider, mark it running, generate or stream output, persist completed or failed evidence, and allow human verification. The streaming workspace closes each `EventSource` on completion, error, or unmount and commits only completed document buffers to the local workspace state.
 

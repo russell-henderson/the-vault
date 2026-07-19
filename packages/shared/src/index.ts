@@ -16,7 +16,8 @@ export const providerMetadataSchema = z.object({
   durationMs: z.number().int().nonnegative().optional()
 });
 
-export const providerKindSchema = z.enum(["ollama", "mock"]);
+export const providerKindSchema = z.enum(["ollama", "mock", "openrouter"]);
+export const providerCapabilitySchema = z.enum(["generation", "embedding"]);
 export const providerSelectionSchema = z.object({
   provider: providerKindSchema,
   model: z.string().trim().max(160).optional()
@@ -30,14 +31,21 @@ export const providerModelOptionSchema = z.object({
   model: nonEmpty.max(160),
   label: nonEmpty.max(240),
   available: z.boolean(),
-  cloud: z.boolean()
+  cloud: z.boolean(),
+  capability: providerCapabilitySchema.optional()
 });
 export const providerCatalogSchema = z.object({
   configured: z.object({ analysis: providerSelectionSchema, creation: providerSelectionSchema }),
   models: z.array(providerModelOptionSchema),
+  embeddingModels: z.array(providerModelOptionSchema).optional(),
   ollamaAvailable: z.boolean(),
   detail: z.string(),
   refreshedAt: z.string().datetime()
+});
+export const embeddingProbeSchema = z.object({
+  model: nonEmpty.max(160),
+  text: nonEmpty.max(8000),
+  imageUrl: z.string().url().max(2000).optional()
 });
 
 export const stackIdSchema = z.string().trim().min(1).max(120);
@@ -325,7 +333,7 @@ export const providerStatusSchema = z.object({
   available: z.boolean(),
   detail: z.string(),
   fallbackAvailable: z.boolean(),
-  models: z.object({ analysis: nonEmpty, creation: nonEmpty }).optional(),
+  models: z.object({ analysis: nonEmpty.optional(), creation: nonEmpty.optional() }).optional(),
   ollamaAvailable: z.boolean().optional(),
   catalogRefreshedAt: z.string().datetime().optional()
 });
@@ -361,6 +369,7 @@ export type WorkspaceDocumentFilename = z.infer<typeof workspaceDocumentFilename
 export type WorkspaceDocumentStatus = z.infer<typeof workspaceDocumentStatusSchema>;
 export type ProviderModelOption = z.infer<typeof providerModelOptionSchema>;
 export type ProviderCatalog = z.infer<typeof providerCatalogSchema>;
+export type EmbeddingProbe = z.infer<typeof embeddingProbeSchema>;
 export type ProviderStatus = z.infer<typeof providerStatusSchema>;
 export type ConstraintExtraction = z.infer<typeof constraintExtractionSchema>;
 export type ExplicitConstraints = z.infer<typeof explicitConstraintsSchema>;
