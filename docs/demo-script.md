@@ -1,7 +1,7 @@
 # The Vault Architect — Product Story and Demo Script
 
 **Status:** Canonical product story and local demonstration
-**Last reviewed:** 2026-07-18
+**Last reviewed:** 2026-07-19
 
 This document consolidates the former demo story and demo script. The architecture is defined in [architecture.md](architecture.md). Delivery scope is defined in [development-plan.md](development-plan.md).
 
@@ -56,7 +56,7 @@ Explain that constraint extraction comes first, discovery is consultative, and t
 
 ### 1:05–1:35 — Confirm and review
 
-Select the registered direction and choose Confirm & synthesize.
+For a high-confidence registered result, point out that the proposal begins synthesizing automatically. If discovery requires review, select the registered direction and choose Confirm & synthesize.
 
 Review the boundary, selected generator, dynamic packet components, constraints, files, assumptions, acceptance criteria, and provider metadata.
 
@@ -78,7 +78,7 @@ Say:
 
 ### 2:05–2:35 — Select and generate documents
 
-Review the PRD preview, choose ARCHITECTURE.md, API.md, DEPLOYMENT.md, and TROUBLESHOOTING.md, then select Generate Core Documentation.
+Review the PRD preview, choose ARCHITECTURE.md, API.md, DATA_MODELS.md, COMPONENTS.md, DEVELOPMENT_PLAN.md, TESTING_STRATEGY.md, DEPLOYMENT.md, and TROUBLESHOOTING.md, then select Generate Core Documentation.
 
 The dedicated workspace opens with PRD.md, README.md, and the selected documents. Show the sidebar statuses, fading persona thought cycle, live SSE Markdown preview, and batch/individual export controls. The cursor and status text make progress visible without a blocking spinner or polling loop.
 

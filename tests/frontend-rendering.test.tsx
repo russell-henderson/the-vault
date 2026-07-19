@@ -39,6 +39,10 @@ describe("primary frontend workflow states", () => {
     expect(markdown).toContain("Keep the workflow bounded");
     const grid = renderToStaticMarkup(<DocumentSelectGrid selected={["API.md"]} onChange={() => undefined} />);
     expect(grid).toContain("ARCHITECTURE.md");
+    expect(grid).toContain("DATA_MODELS.md");
+    expect(grid).toContain("COMPONENTS.md");
+    expect(grid).toContain("DEVELOPMENT_PLAN.md");
+    expect(grid).toContain("TESTING_STRATEGY.md");
     expect(grid).toContain('aria-pressed="true"');
   });
 

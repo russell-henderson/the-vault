@@ -12,18 +12,18 @@
 The Vault Architect turns a human brief into a bounded, reviewable engineering handoff. It keeps intent, constraints, architecture decisions, generated documents, provider metadata, and verification evidence connected from the first brief through the final artifact.
 
 ```text
-Brief → Discover → Confirm → Synthesize → Approve → Compile → Stream → Verify
+Brief → Discover → Auto-advance or Review → Synthesize → Approve → Compile → Stream → Verify
 ```
 
 The product is deliberately human-governed. Providers propose content; the user confirms the direction, approves the blueprint, reviews generated documents, and records verification evidence.
 
 ## What is in the current release
 
-- **Guided architecture workflow:** write a brief, inspect registry-backed recommendations, confirm a generator, and review the proposed Architecture Packet V2 before saving.
+- **Guided architecture workflow:** write a brief, auto-advance to a proposal when discovery is highly confident, or inspect registry-backed recommendations and confirm a generator when review is required.
 - **Authority boundaries:** explicit constraints, unsupported technologies, ambiguous intent, and incompatible generators stop at `Review Required` before provider synthesis or persistence.
 - **Provider-neutral generation:** use local Ollama models or the deterministic mock provider. Analysis and creation models can be selected independently.
 - **Prompt and execution evidence:** compile deterministic prompt artifacts, launch bounded executions, inspect generated output and provider metadata, and record human verification notes.
-- **Real-time document workspace:** generate PRD and core documents through SSE, watch Markdown tokens arrive live, reroll one document without disturbing the others, edit locally, and export Markdown or ZIP bundles.
+- **Real-time document workspace:** generate PRD, architecture, API, data-model, component, development-plan, testing-strategy, deployment, and troubleshooting documents through SSE; reroll one document without disturbing the others, edit locally, and export Markdown or ZIP bundles.
 - **Premium blueprint vault:** manage tags, rename records, delete single or selected blueprints, filter by canonical tags, and personalize cards with browser-local cover art.
 - **Local-first cover customization:** PNG, JPEG, and WebP covers are resized in the browser and stored in IndexedDB by blueprint ID. They never enter SQLite, provider prompts, or the server API.
 - **Traceable operations:** the API persists blueprints, packets, prompt artifacts, execution records, provider metadata, and verification notes in SQLite.
@@ -98,7 +98,7 @@ The dashboard reports provider health and requires an explicit model choice for 
 ## Product walkthrough
 
 1. Select **Start with a brief** and describe the intended outcome and constraints.
-2. Run discovery, compare registered options, confirm the intended generator, and review the proposal.
+2. Run discovery. High-confidence registered results synthesize a proposal automatically; otherwise compare options, confirm the intended generator, and review the proposal.
 3. Select **Approve & save blueprint** to persist the blueprint and Architecture Packet V2.
 4. Compile the deterministic prompt artifact and choose the creation provider/model.
 5. Generate the PRD and selected core documents, then open the workspace.
@@ -121,15 +121,15 @@ The SSE endpoint emits `data: {"chunk":"..."}` frames and ends with `data: {"sta
 
 ## Verification status
 
-The release build and static checks pass:
+The current checks pass:
 
 ```text
 npm run typecheck  ✓
+npm test           ✓ 88 tests
 npm run build      ✓
-Focused tests      ✓ 19 tests
 ```
 
-The full suite currently has an environment-specific blocker: 58 tests pass, while 21 database-backed tests cannot load the installed `better-sqlite3` binary because it was compiled for Node ABI 127 and the active runtime requires ABI 147. The application’s live API mutation flow has been verified separately against the running v1.0.0 service.
+The full suite, including database-backed checks, passes in the current workspace.
 
 ## Boundaries and non-goals
 
@@ -137,7 +137,6 @@ The full suite currently has an environment-specific blocker: 58 tests pass, whi
 - No autonomous repository mutation or unreviewed code merge.
 - No unrestricted agent shell or workspace access.
 - No server-side persistence for browser-local cover art.
-- No claim of complete verification while the native SQLite dependency remains mismatched.
 
 ## Documentation
 

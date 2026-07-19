@@ -19,6 +19,7 @@ const initialState: FormState = {
   constraints: "",
   technicalConstraints: ""
 };
+const mockSeedEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCK_SEED === "true";
 
 function splitLines(value: string) { return value.split(/\n|,/).map((item) => item.trim()).filter(Boolean); }
 
@@ -41,7 +42,7 @@ export function BlueprintForm({ onSubmit, onCancel, initialBrief = "", autoFillO
   }, [initialBrief]);
 
   useEffect(() => {
-    if (autoFillOnEntry && initialBrief) {
+    if (mockSeedEnabled && autoFillOnEntry && initialBrief) {
       void handleAutoFill(initialBrief);
     }
   }, [autoFillOnEntry, initialBrief]);
@@ -49,6 +50,7 @@ export function BlueprintForm({ onSubmit, onCancel, initialBrief = "", autoFillO
   const update = (key: keyof FormState, value: string) => setForm((current) => ({ ...current, [key]: value }));
 
   async function handleAutoFill(desc?: string) {
+    if (!mockSeedEnabled) return;
     const targetDesc = desc || form.description;
     if (!targetDesc.trim()) {
       setErrors(["Please enter a description before auto-filling."]);
@@ -162,14 +164,14 @@ export function BlueprintForm({ onSubmit, onCancel, initialBrief = "", autoFillO
       <div className="field">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-slate-300">Description</span>
-          <button
-            type="button"
-            className="button-secondary text-xs py-1 px-3"
-            disabled={extrapolating}
-            onClick={() => void handleAutoFill()}
-          >
-            {extrapolating ? "✦ Extrapolating…" : "✦ Auto-Fill Blueprint"}
-          </button>
+          {mockSeedEnabled && <button
+              type="button"
+              className="button-secondary text-xs py-1 px-3"
+              disabled={extrapolating}
+              onClick={() => void handleAutoFill()}
+            >
+              {extrapolating ? "✦ Extrapolating…" : "✦ Auto-Fill Blueprint"}
+            </button>}
         </div>
         <textarea className={fieldClass(true)} rows={3} value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="What is this project responsible for?" />
       </div>

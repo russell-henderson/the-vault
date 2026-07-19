@@ -83,6 +83,22 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim()) : [];
 }
 
+function sanitizeGeneratorId(value: unknown): unknown {
+  return typeof value === "string" ? value.trim().split(/[:, ]/)[0]?.trim() ?? "" : value;
+}
+
+function normalizeDiscoveryResult(value: unknown): unknown {
+  const root = asObject(value);
+  const likelyStackOptions = Array.isArray(root.likelyStackOptions)
+    ? root.likelyStackOptions.map((option) => ({ ...asObject(option), stackId: sanitizeGeneratorId(asObject(option).stackId) }))
+    : root.likelyStackOptions;
+  return {
+    ...root,
+    likelyStackOptions,
+    recommendedStackId: sanitizeGeneratorId(root.recommendedStackId)
+  };
+}
+
 function contextFromAuthorization(authorization: AuthorizedSynthesisContext): ArchitectureSynthesisContext {
   if (authorization.policyHash !== authorization.generatorPolicy.policyHash || authorization.provenance.policyHash !== authorization.policyHash || authorization.provenance.validationStatus !== "passed") throw new Error("Authorized synthesis context failed provenance validation");
   return {
@@ -228,7 +244,7 @@ export class OllamaAiProvider implements AiProvider {
     const response = await this.request({ model, system: discoveryInstruction(request), prompt: request.brief, stream: false, format: discoveryResponseFormat });
     let parsed: unknown;
     try { parsed = JSON.parse(cleanJson(response.response ?? "")); } catch { throw new Error("Ollama returned invalid JSON for architecture discovery"); }
-    const result = discoveryModelResultSchema.safeParse(parsed);
+    const result = discoveryModelResultSchema.safeParse(normalizeDiscoveryResult(parsed));
     if (!result.success) throw new Error(`Ollama discovery validation failed: ${result.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
     const metadata = { name: this.name, model, durationMs: Date.now() - started } as const;
     return { result: result.data, metadata };

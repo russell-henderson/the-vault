@@ -3,6 +3,16 @@ import { createGeneratorRegistry, type GeneratorRegistry } from "@the-vault/prom
 import { extractConstraints } from "./constraint-extractor.js";
 import type { AiProvider } from "../providers/types.js";
 
+export const ALIAS_MAP: Record<string, string> = {
+  "learning-technologies-stack": "react-typescript",
+  "web-dashboard-stack": "react-typescript"
+};
+
+function canonicalGeneratorId(id: string): string {
+  const sanitizedId = id.trim().split(/[:, ]/)[0]?.trim() ?? "";
+  return ALIAS_MAP[sanitizedId] ?? sanitizedId;
+}
+
 export class ArchitectureAnalyzer {
   constructor(readonly registry: GeneratorRegistry = createGeneratorRegistry()) {}
 
@@ -30,9 +40,9 @@ export class ArchitectureAnalyzer {
     }
 
     const candidateIds = new Set(candidates.map(({ option }) => option.stackId));
-    const returnedOptions = modelResult?.likelyStackOptions ?? baseOptions;
+    const returnedOptions = (modelResult?.likelyStackOptions ?? baseOptions).map((option) => ({ ...option, stackId: canonicalGeneratorId(option.stackId) }));
     const invalidIds = returnedOptions.map((option) => option.stackId).filter((stackId) => !candidateIds.has(stackId));
-    const returnedRecommendation = modelResult?.recommendedStackId;
+    const returnedRecommendation = modelResult?.recommendedStackId ? canonicalGeneratorId(modelResult.recommendedStackId) : null;
     if (invalidIds.length > 0 || (returnedRecommendation && !candidateIds.has(returnedRecommendation))) {
       return discoveryResultSchema.parse({
         ...this.reviewResult(constraints, baseEvidence),

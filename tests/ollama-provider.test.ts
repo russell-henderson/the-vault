@@ -47,6 +47,19 @@ describe("Ollama provider", () => {
     fetchMock.mockRestore();
   });
 
+  it("sanitizes hallucinated metadata appended to discovery generator IDs", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ response: JSON.stringify({ domain: "web-dashboard", likelyStackOptions: [{ stackId: "react-typescript:web-dashboard,web,Tailwind", reason: "Dashboard signals fit.", confidence: 0.9 }], recommendedStackId: "react-typescript web dashboard", missingInfo: [], clarifyingQuestions: [] }) }), { status: 200 }));
+    const result = await new OllamaAiProvider("http://ollama.test", "analysis-model").generateDiscovery({
+      brief: "Build a dashboard",
+      registrySlice: [{ stackId: "react-typescript", domainProfile: "web-dashboard", platform: "web", language: "TypeScript", frameworkOptions: ["React"], supportedIntentSignals: ["dashboard"], architecturalTraits: ["browser UI"], requiredComponentKinds: ["ViewLayer"], constraints: [], prohibitedSubstitutions: [], version: "2.0.0" }],
+      constraints: { platforms: ["web"], languages: ["typescript"], frameworks: [], stackMentions: ["web", "typescript"], prohibitions: [], unrecognizedMentions: [], tokens: ["build", "a", "dashboard"] }
+    });
+
+    expect(result.result.likelyStackOptions[0]?.stackId).toBe("react-typescript");
+    expect(result.result.recommendedStackId).toBe("react-typescript");
+    fetchMock.mockRestore();
+  });
+
   it("repairs omitted structural fields with visible warnings", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ response: JSON.stringify({ blueprint: { name: "Analytics Panel" }, plan: { summary: "Build it" }, warnings: [] }) }), { status: 200 }));
     const result = await new OllamaAiProvider("http://ollama.test", "analysis-model", "creation-model").generateBlueprint({ brief: "Build an analytics panel", ...reactSynthesis });

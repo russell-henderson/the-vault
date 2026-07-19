@@ -31,4 +31,17 @@ describe("architecture discovery analyzer", () => {
     expect(result.status).toBe("review-required");
     expect(result.reasons.join(" ")).toContain("unsupported generator ID");
   });
+
+  it("maps sanitized hallucinated stack aliases to the canonical React generator", async () => {
+    const provider = {
+      generateDiscovery: vi.fn().mockResolvedValue({ result: { domain: "web-dashboard", likelyStackOptions: [{ stackId: "learning-technologies-stack:web-dashboard", reason: "Learning dashboard signals fit.", confidence: 0.99 }], recommendedStackId: "learning-technologies-stack", missingInfo: [], clarifyingQuestions: [] }, metadata: { name: "test", model: "test" } })
+    } as unknown as AiProvider;
+    const result = await new ArchitectureAnalyzer().analyze("Build a React TypeScript web dashboard for student learning.", provider);
+
+    expect(result.status).toBe("discovery");
+    expect(result.likelyStackOptions[0]?.stackId).toBe("react-typescript");
+    expect(result.suggestedGeneratorId).toBe("react-typescript");
+    expect(result.recommendedStackId).toBe("react-typescript");
+  });
+
 });

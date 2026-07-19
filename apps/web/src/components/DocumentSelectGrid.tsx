@@ -3,6 +3,10 @@ import type { CoreDocumentFilename } from "@the-vault/shared";
 export const CORE_DOCUMENTS: Array<{ filename: CoreDocumentFilename; title: string; detail: string }> = [
   { filename: "ARCHITECTURE.md", title: "System topology", detail: "Boundaries, components, and data flow." },
   { filename: "API.md", title: "API contracts", detail: "Endpoints, payloads, and synchronization rules." },
+  { filename: "DATA_MODELS.md", title: "Data models", detail: "Schema, relationships, indexes, and caching." },
+  { filename: "COMPONENTS.md", title: "Component system", detail: "UI hierarchy, state boundaries, and prop contracts." },
+  { filename: "DEVELOPMENT_PLAN.md", title: "Development plan", detail: "Three-phase roadmap, dependencies, and delivery risks." },
+  { filename: "TESTING_STRATEGY.md", title: "Testing strategy", detail: "Component, API contract, and parsing precision coverage." },
   { filename: "DEPLOYMENT.md", title: "Deployment", detail: "CI/CD pipelines and hosting targets." },
   { filename: "TROUBLESHOOTING.md", title: "Failure modes", detail: "Edge cases, recovery, and operational guidance." }
 ];
@@ -15,7 +19,7 @@ export function DocumentSelectGrid({ selected, onChange }: { selected: CoreDocum
   return <section className="document-select-panel">
     <div className="flex items-end justify-between gap-4">
       <div><p className="eyebrow">Document set</p><h3 className="section-title">Choose the next handoff</h3><p className="mt-1 text-xs text-slate-400">README.md is included as the workspace index. Select the supporting documents to generate.</p></div>
-      <span className="tag">{selected.length}/4 selected</span>
+      <span className="tag">{selected.length}/{CORE_DOCUMENTS.length} selected</span>
     </div>
     <div className="document-select-grid">
       {CORE_DOCUMENTS.map((document) => {

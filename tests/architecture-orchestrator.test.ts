@@ -51,4 +51,15 @@ describe("architecture constraint gate", () => {
     if (preparation.status !== "review-required") throw new Error("Expected review-required preparation");
     expect(preparation.reasons.join(" ")).toContain("confirmed generatorId");
   });
+
+  it("inherits primary requirements for Fleet Controller secondary intent", () => {
+    const preparation = orchestrator.prepareConfirmed("Build a React dashboard with frontend components for monitoring telemetry and showing fleet status.", "react-typescript");
+
+    expect(preparation.status).toBe("ready");
+    if (preparation.status !== "ready") throw new Error("Expected inherited capabilities to authorize the React generator");
+    expect(preparation.constraints.frameworks).toContain("react");
+    expect(preparation.generator.policy.policyMetadata.capabilities.primary).toEqual(["react", "typescript", "tailwind"]);
+    expect(preparation.generator.policy.policyMetadata.capabilities.secondary.infrastructure).toContain("telemetry");
+  });
+
 });

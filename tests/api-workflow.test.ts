@@ -160,12 +160,12 @@ describe("blueprint API workflow", () => {
     expect(completedPrd.artifactType).toBe("PRD");
 
     // Stage 2: Generate Core Docs
-    const coreDocsLaunch = await app.inject({ method: "POST", url: `/api/blueprints/${blueprintId}/generate-core-docs`, payload: { requestedFiles: ["README.md", "ARCHITECTURE.md"], creation: { provider: "mock", model: "deterministic-local" } } });
+    const coreDocsLaunch = await app.inject({ method: "POST", url: `/api/blueprints/${blueprintId}/generate-core-docs`, payload: { requestedFiles: ["README.md", "ARCHITECTURE.md", "DATA_MODELS.md", "COMPONENTS.md"], creation: { provider: "mock", model: "deterministic-local" } } });
     expect(coreDocsLaunch.statusCode).toBe(201);
     const completedCoreDocs = coreDocsLaunch.json<{ executions: Array<{ artifactType: string; status: string; documentFilename?: string }>; workspace: { documents: Array<{ filename: string; status: string }> } }>();
-    expect(completedCoreDocs.executions).toHaveLength(2);
+    expect(completedCoreDocs.executions).toHaveLength(4);
     expect(completedCoreDocs.executions.every((execution) => execution.status === "completed" && execution.artifactType === "Core Documentation")).toBe(true);
-    expect(completedCoreDocs.executions.map((execution) => execution.documentFilename)).toEqual(["README.md", "ARCHITECTURE.md"]);
+    expect(completedCoreDocs.executions.map((execution) => execution.documentFilename)).toEqual(["README.md", "ARCHITECTURE.md", "DATA_MODELS.md", "COMPONENTS.md"]);
     expect(completedCoreDocs.workspace.documents.find((document) => document.filename === "API.md")?.status).toBe("pending");
 
     const workspace = await app.inject({ method: "GET", url: `/api/blueprints/${blueprintId}/workspace` });

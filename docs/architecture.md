@@ -65,6 +65,7 @@ React workspace
   ▼
 Fastify API + shared Zod schemas
   │ constraint extraction and registry-backed discovery
+  ├── High-confidence registered result: proposal synthesis
   ├── Review Required: unsupported, ambiguous, conflicting, or incomplete
   │ confirmed registered generator
   ▼
@@ -147,7 +148,7 @@ The Analyzer exposes enrichment as suggestedGeneratorId, likelyStackOptions, and
 
 ### Registry boundary
 
-GeneratorRegistry owns registered IDs, implementation platform/language/frameworks, versions, templates, lifecycle, capabilities, constraints, capability fingerprints, policy hashes, and authorized options.
+GeneratorRegistry owns registered IDs, implementation platform/language/frameworks, versions, templates, lifecycle, capabilities, constraints, capability fingerprints, policy metadata, policy hashes, and authorized options. Policy metadata may declare secondary domain capabilities that inherit a generator's primary technical requirements; final authorization validates those primary requirements and every explicit brief constraint.
 
 It rejects unknown, unsupported, disabled, deprecated-without-override, version-drifted, policy-hash-drifted, capability-incompatible, and constraint-conflicting requests.
 
@@ -280,7 +281,7 @@ Discovery review is a handled consultative state. Final proposal review is HTTP 
 
 POST /api/blueprints is a separate trusted-input path. It bypasses AI discovery but not schema validation or persistence integrity.
 
-The document workspace treats the completed PRD execution as immutable source context. Core-document generation creates one prompt and execution record per requested filename; rerolling one filename creates a new record linked to the same PRD and leaves other document records unchanged. Generated documents remain reviewable artifacts and are exported client-side; the server does not write them into the repository.
+The document workspace treats the completed PRD execution as immutable source context. Core-document generation supports ARCHITECTURE.md, API.md, DATA_MODELS.md, COMPONENTS.md, DEVELOPMENT_PLAN.md, TESTING_STRATEGY.md, DEPLOYMENT.md, and TROUBLESHOOTING.md; it creates one prompt and execution record per requested filename. Rerolling one filename creates a new record linked to the same PRD and leaves other document records unchanged. Generated documents remain reviewable artifacts and are exported client-side; the server does not write them into the repository.
 
 Blueprint cover art is a client-only enhancement. The web app validates and resizes PNG, JPEG, and WebP uploads before storing them in browser IndexedDB under the blueprint ID. Removing a blueprint also removes its local cover reference; no cover data is persisted in SQLite or sent to a provider.
 

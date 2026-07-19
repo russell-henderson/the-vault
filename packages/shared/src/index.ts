@@ -23,7 +23,7 @@ export const providerSelectionSchema = z.object({
   model: z.string().trim().max(160).optional()
 });
 export const promptKindSchema = z.enum(["prd", "core-document", "implementation"]);
-export const coreDocumentFilenameSchema = z.enum(["README.md", "ARCHITECTURE.md", "API.md", "DEPLOYMENT.md", "TROUBLESHOOTING.md"]);
+export const coreDocumentFilenameSchema = z.enum(["README.md", "ARCHITECTURE.md", "API.md", "DATA_MODELS.md", "COMPONENTS.md", "DEVELOPMENT_PLAN.md", "TESTING_STRATEGY.md", "DEPLOYMENT.md", "TROUBLESHOOTING.md"]);
 export const workspaceDocumentFilenameSchema = z.union([z.literal("PRD.md"), coreDocumentFilenameSchema]);
 export const workspaceDocumentStatusSchema = z.enum(["pending", "running", "completed", "failed"]);
 export const providerModelOptionSchema = z.object({
@@ -148,6 +148,12 @@ export const generatorPolicySchema = z.object({
   versions: z.object({ generator: nonEmpty.max(80), supported: z.array(nonEmpty.max(80)).min(1).max(20), default: nonEmpty.max(80).optional() }),
   templates: z.array(z.object({ id: nonEmpty.max(160), supportedVersions: z.array(nonEmpty.max(80)).min(1).max(20), status: z.enum(["supported", "experimental", "deprecated", "disabled"]) })).max(30),
   constraints: z.object({ requires: z.array(nonEmpty.max(500)).max(50), conflicts: z.array(nonEmpty.max(500)).max(50) }),
+  policyMetadata: z.object({
+    capabilities: z.object({
+      primary: z.array(nonEmpty.max(160)).min(1).max(20),
+      secondary: z.record(z.array(nonEmpty.max(160)).min(1).max(50)).default({})
+    })
+  }).default({ capabilities: { primary: ["unconfigured"], secondary: {} } }),
   lifecycle: z.object({ status: z.enum(["supported", "experimental", "deprecated", "disabled"]) }),
   metadata: z.object({ owner: nonEmpty.max(160).optional(), createdAt: z.string().datetime(), updatedAt: z.string().datetime() }),
   policyHash: nonEmpty.max(200)
@@ -310,7 +316,7 @@ export const executionCreateSchema = z.object({ promptArtifactId: nonEmpty, prov
 export const blueprintMutationSchema = z.object({ projectName: z.string().trim().min(1).max(120).optional(), tags: tagsSchema.optional() }).refine((value) => value.projectName !== undefined || value.tags !== undefined, { message: "A project name or tags update is required" });
 export const generateCoreDocsInputSchema = z.object({
   creation: providerSelectionSchema.optional(),
-  requestedFiles: z.array(coreDocumentFilenameSchema).min(1).max(5).optional()
+  requestedFiles: z.array(coreDocumentFilenameSchema).min(1).max(9).optional()
 }).refine((value) => !value.requestedFiles || new Set(value.requestedFiles).size === value.requestedFiles.length, { message: "requestedFiles must not contain duplicates", path: ["requestedFiles"] });
 export const rerollDocumentInputSchema = z.object({ filename: coreDocumentFilenameSchema, creation: providerSelectionSchema.optional() });
 export const briefInputSchema = z.object({ brief: nonEmpty.max(8000), provider: z.enum(["configured", "mock"]).default("configured"), analysis: providerSelectionSchema.optional(), generatorId: stackIdSchema.optional(), discovery: z.unknown().optional() });

@@ -6,14 +6,29 @@ import { ProviderStatus } from "./ProviderStatus";
 import { ProviderRoleControl } from "./ProviderRoleControl";
 import { EmbeddingModelProbe } from "./EmbeddingModelProbe";
 
-export function BriefComposer({ providerStatus, catalog, catalogLoading, onRefreshCatalog, onApprove, onManual, onCancel }: { providerStatus?: ProviderStatusData; catalog?: ProviderCatalog; catalogLoading: boolean; onRefreshCatalog: () => Promise<boolean>; onApprove: (proposal: BlueprintProposal) => Promise<void>; onManual: (brief?: string, autoFill?: boolean) => void; onCancel: () => void }) {
+type AvailableGenerator = string | { id?: string; stackId?: string };
+type DiscoveryResponse = DiscoveryResult & { confidence?: number; availableGenerators?: AvailableGenerator[] };
+type BriefComposerProps = {
+  providerStatus?: ProviderStatusData;
+  catalog?: ProviderCatalog;
+  catalogLoading: boolean;
+  onRefreshCatalog: () => Promise<boolean>;
+  onApprove: (proposal: BlueprintProposal) => Promise<void>;
+  onProposalGenerated?: (proposal: BlueprintProposal) => void;
+  onManual: (brief?: string, autoFill?: boolean) => void;
+  onCancel: () => void;
+};
+
+const mockSeedEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCK_SEED === "true";
+
+export function BriefComposer({ providerStatus, catalog, catalogLoading, onRefreshCatalog, onApprove, onProposalGenerated, onManual, onCancel }: BriefComposerProps) {
   const [brief, setBrief] = useState("Build an app that helps people track and understand their daily habits.");
   const initialProvider = catalog?.configured.analysis.provider ?? (providerStatus?.configured.name === "ollama" ? "ollama" : "mock");
   const [analysisSelection, setAnalysisSelection] = useState<ProviderSelection>({ provider: initialProvider });
   const [discovery, setDiscovery] = useState<DiscoveryResult>();
   const [selectedStack, setSelectedStack] = useState<string>();
   const [proposal, setProposal] = useState<BlueprintProposal>();
-  const [analyzing, setAnalyzing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -25,8 +40,33 @@ export function BriefComposer({ providerStatus, catalog, catalogLoading, onRefre
 
   async function analyze(event: React.FormEvent) {
     event.preventDefault();
-    if (!brief.trim()) return;
-    onManual(brief);
+    if (!brief.trim() || selectionUnavailable || isAnalyzing) return;
+    setIsAnalyzing(true);
+    setProposal(undefined);
+    resetDiscovery();
+    try {
+      const result = await api.analyzeArchitecture(brief, analysisSelection.provider === "mock" ? "mock" : "configured", analysisSelection) as DiscoveryResponse;
+      setDiscovery(result);
+
+      const confidence = result.confidence ?? result.evidence[0]?.confidence ?? result.likelyStackOptions[0]?.confidence ?? 0;
+      const candidateGeneratorId = result.suggestedGeneratorId ?? result.recommendedStackId ?? result.likelyStackOptions[0]?.stackId;
+      const availableGenerators = result.availableGenerators ?? result.likelyStackOptions.map((option) => option.stackId);
+      const validGenerator = availableGenerators.find((generator) => {
+        const generatorId = typeof generator === "string" ? generator : generator.id ?? generator.stackId;
+        return generatorId === candidateGeneratorId;
+      });
+      const generatorId = typeof validGenerator === "string" ? validGenerator : validGenerator?.id ?? validGenerator?.stackId;
+
+      if (result.status === "discovery" && confidence > 0.90 && generatorId) {
+        const generatedProposal = await api.generateBlueprintProposal(brief, generatorId, result, analysisSelection.provider === "mock" ? "mock" : "configured", analysisSelection);
+        setProposal(generatedProposal);
+        onProposalGenerated?.(generatedProposal);
+      }
+    } catch (analysisError) {
+      setError(analysisError instanceof Error ? analysisError.message : "Unable to analyze the architecture direction");
+    } finally {
+      setIsAnalyzing(false);
+    }
   }
 
   async function synthesize() {
@@ -69,19 +109,20 @@ export function BriefComposer({ providerStatus, catalog, catalogLoading, onRefre
                 className="w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none p-4 pb-14 text-slate-200 placeholder-slate-500 resize-y"
                 rows={8}
                 value={brief}
+                disabled={isAnalyzing}
                 onChange={(event) => { setBrief(event.target.value); resetDiscovery(); }}
                 placeholder="Describe the outcome, users, and constraints…"
               />
-              <div className="absolute bottom-3 right-3">
+              {mockSeedEnabled && <div className="absolute bottom-3 right-3">
                 <button
                   type="button"
                   onClick={() => onManual(brief, true)}
-                  disabled={!brief.trim()}
+                  disabled={!brief.trim() || isAnalyzing}
                   className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:bg-slate-800 disabled:text-slate-500 text-white font-semibold text-xs py-1.5 px-3 rounded-lg shadow-lg flex items-center gap-1.5 transition-all"
                 >
                   <span>✦ Auto-Fill Fields</span>
                 </button>
-              </div>
+              </div>}
             </div>
           </div>
 
@@ -131,15 +172,15 @@ export function BriefComposer({ providerStatus, catalog, catalogLoading, onRefre
             <div className="flex gap-2">
               <button
                 className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-2 px-5 rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all text-sm"
-                disabled={analyzing || !brief.trim() || selectionUnavailable}
+                disabled={isAnalyzing || !brief.trim() || selectionUnavailable}
                 type="submit"
               >
-                {analyzing ? <><span className="inline-spinner" /> Analyzing…</> : "Analyze idea / Compile Prompt →"}
+                {isAnalyzing ? <><span className="inline-spinner" /> {analysisSelection.provider === "ollama" ? "Ollama" : analysisSelection.provider === "mock" ? "Mock" : "Selected provider"} is analyzing intent…</> : "Analyze idea / Compile Prompt →"}
               </button>
               {discovery?.status === "discovery" && (
                 <button
                   className="button-primary"
-                  disabled={generating || analyzing || !selectedStack || selectionUnavailable || synthesisBlocked}
+                  disabled={generating || isAnalyzing || !selectedStack || selectionUnavailable || synthesisBlocked}
                   type="button"
                   onClick={() => void synthesize()}
                 >

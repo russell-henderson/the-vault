@@ -35,7 +35,7 @@ const vocabulary: VocabularyEntry[] = [
 ];
 
 const ignoredTechnologyWords = new Set([
-  "a", "an", "and", "app", "application", "accessible", "ai", "analytics", "api", "avoid", "browser", "build", "can", "cannot", "collision", "controller", "create", "custom", "dashboard", "data", "desktop", "do", "does", "exclude", "excluding", "feature", "for", "form", "forms", "game", "handling", "helps", "habit", "habits", "in", "input", "ios", "keyboard", "local", "loop", "mobile", "must", "navigation", "native", "never", "no", "not", "of", "or", "panel", "people", "persistence", "physics", "project", "responsive", "scene", "settings", "sprite", "state", "that", "the", "to", "track", "ui", "use", "using", "web", "window", "windowed", "with", "without", "write"
+  "a", "an", "and", "app", "application", "accessible", "ai", "analytics", "api", "avoid", "based", "browser", "build", "can", "cannot", "collision", "controller", "create", "css", "custom", "dashboard", "data", "desktop", "do", "does", "exclude", "excluding", "feature", "for", "form", "forms", "game", "handling", "helps", "habit", "habits", "in", "input", "ios", "keyboard", "local", "loop", "mobile", "must", "navigation", "native", "never", "no", "not", "of", "or", "panel", "people", "persistence", "physics", "project", "responsive", "rich", "scene", "settings", "sprite", "state", "student", "styled", "that", "the", "to", "track", "ui", "use", "using", "web", "window", "windowed", "with", "without", "write"
 ].map((word) => word.trim()));
 const explicitTechnologyHints = new Set(["angular", "compose", "csharp", "dart", "dotnet", "electron", "flutter", "java", "kotlin", "next", "nextjs", "nuxt", "qt", "rust", "svelte", "vue"]);
 

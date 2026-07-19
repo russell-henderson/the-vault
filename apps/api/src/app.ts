@@ -13,7 +13,7 @@ import { ArchitectureAnalyzer } from "./services/architecture-analyzer.js";
 import { ArchitectureOrchestrator } from "./services/architecture-orchestrator.js";
 
 const mockSelection: ProviderSelection = { provider: "mock", model: "deterministic-local" };
-const coreDocumentFilenames: CoreDocumentFilename[] = ["README.md", "ARCHITECTURE.md", "API.md", "DEPLOYMENT.md", "TROUBLESHOOTING.md"];
+const coreDocumentFilenames: CoreDocumentFilename[] = ["README.md", "ARCHITECTURE.md", "API.md", "DATA_MODELS.md", "COMPONENTS.md", "DEVELOPMENT_PLAN.md", "TESTING_STRATEGY.md", "DEPLOYMENT.md", "TROUBLESHOOTING.md"];
 
 function workspaceFromRecords(blueprint: BlueprintWorkspace["blueprint"], records: ExecutionRecord[]): BlueprintWorkspace {
   const prd = records.find((record) => record.artifactType === "PRD" && record.status === "completed");

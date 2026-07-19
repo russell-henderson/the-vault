@@ -20,6 +20,15 @@ export type ArchitectureSynthesisRequest = {
 
 const ORCHESTRATOR_VERSION = "stage6-authority-v1";
 
+type InheritedCapabilities = { primary: string[]; secondary: Record<string, string[]> };
+
+function hasCapability(capabilities: InheritedCapabilities, capability: string): boolean {
+  if (capabilities.primary.includes(capability)) return true;
+  return Object.values(capabilities.secondary).some((secondaryCapabilities) =>
+    secondaryCapabilities.includes(capability) && capabilities.primary.every((primaryCapability) => hasCapability(capabilities, primaryCapability))
+  );
+}
+
 export class ArchitectureOrchestrator {
   constructor(readonly registry: GeneratorRegistry = createGeneratorRegistry()) {}
 
@@ -33,10 +42,16 @@ export class ArchitectureOrchestrator {
   }
 
   prepareConfirmed(brief: string, generatorId: string, discovery?: DiscoveryResult): ArchitecturePreparation {
-    const constraints = extractConstraints(brief);
+    const extractedConstraints = extractConstraints(brief);
     const generator = this.registry.getGenerator(generatorId);
+    if (!generator) {
+      const classification = this.registry.classify(brief, extractedConstraints);
+      return this.review(classification, extractedConstraints, [`The confirmed generator ${generatorId} is not registered.`]);
+    }
+    const constraints = extractedConstraints;
+    const inheritedCapabilities = generator?.policy.policyMetadata.capabilities;
+    const hasSecondaryIntent = Boolean(inheritedCapabilities && extractedConstraints.tokens.some((token) => !inheritedCapabilities.primary.includes(token) && hasCapability(inheritedCapabilities, token)));
     const classification = this.registry.classify(brief, constraints);
-    if (!generator) return this.review(classification, constraints, [`The confirmed generator ${generatorId} is not registered.`]);
 
     const evidence = generator.classify(brief, constraints);
     const classificationValidation = generator.validateClassification(evidence);
@@ -46,6 +61,7 @@ export class ArchitectureOrchestrator {
       platform: constraints.platforms[0],
       language: constraints.languages[0],
       framework: constraints.frameworks[0],
+      requiredCapabilities: hasSecondaryIntent ? inheritedCapabilities?.primary : [],
       explicitConstraints: toExplicitConstraints(constraints),
       registryVersion: this.registry.registryVersion(),
       policyHash: generator.policy.policyHash

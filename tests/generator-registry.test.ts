@@ -39,6 +39,25 @@ describe("registry-based architecture routing", () => {
     expect(result.evidence.recommendedPlatform).toBe("mobile");
   });
 
+  it("declares Tailwind as an explicit React framework option", () => {
+    const generator = registry.get("react-typescript");
+    expect(generator).toBeDefined();
+    if (!generator) throw new Error("Expected React generator");
+
+    expect(generator.frameworkOptions).toContain("Tailwind");
+    expect(generator.validateConstraints(extractConstraints("Build a React TypeScript web dashboard with Tailwind."))).toMatchObject({ status: "passed", errors: [] });
+  });
+
+  it("matches react-typescript constraints", () => {
+    const result = registry.validateRequest({
+      generatorId: "react-typescript",
+      requiredCapabilities: ["react", "typescript", "tailwind", "tailwind css", "css", "frontend", "components", "monitoring", "showing", "dashboard", "ui", "interface", "telemetry", "distributed", "system", "api", "database", "data", "model", "controller"],
+      explicitConstraints: extractConstraints("Build a React TypeScript web dashboard with Tailwind CSS.")
+    });
+
+    expect(result).toMatchObject({ status: "passed", violations: [] });
+  });
+
   it("returns review-required when the requested framework has no generator", () => {
     const brief = "Build a SwiftUI iOS application. No web.";
     const result = registry.classify(brief, extractConstraints(brief));

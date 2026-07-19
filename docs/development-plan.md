@@ -1,7 +1,7 @@
 # The Vault Architect — Product and Development Plan
 
 **Status:** Canonical product scope and delivery plan
-**Last reviewed:** 2026-07-18
+**Last reviewed:** 2026-07-19
 
 This document consolidates the former MVP definition and development plan. Architecture and authority rules are canonical in [architecture.md](architecture.md).
 
@@ -25,7 +25,7 @@ The MVP is for one technical user in one local workspace. It is not a team colla
 - Natural-language brief composition.
 - Structured blueprint authoring and validation.
 - Registry-backed architecture discovery.
-- Explicit generator confirmation.
+- High-confidence proposal auto-advance with review-required fallback and explicit generator confirmation.
 - Authority-bound final synthesis.
 - Architecture Packet V2 with dynamic components and provenance.
 - Human review and approval of generated proposals.
@@ -36,7 +36,7 @@ The MVP is for one technical user in one local workspace. It is not a team colla
 - Execution lifecycle and normalized provider metadata.
 - Human verification notes.
 - Markdown copy and full-trace JSON export.
-- Multi-document workspace with PRD preview, selectable core-document generation, isolated rerolls, real-time SSE document streaming, and client-side Markdown/ZIP export.
+- Multi-document workspace with PRD preview; selectable architecture, API, data-model, component, development-plan, testing-strategy, deployment, and troubleshooting documents; isolated rerolls; real-time SSE streaming; and client-side Markdown/ZIP export.
 - Reliable blueprint vault mutations with canonical tags, authoritative state synchronization, and confirmed bulk deletion.
 - Authored dashboard masthead/status ribbon, persona-driven SSE generation feedback, and optional browser-local IndexedDB cover art for blueprint cards.
 - Review-required behavior for unsupported, ambiguous, conflicting, or drifted requests.
@@ -64,7 +64,7 @@ Brief
   → analysis provider/model selection
   → constraint extraction
   → registry-backed discovery
-  → confirmed generator
+  → high-confidence auto-advance or confirmed generator
   → authorized proposal
   → human approval
   → prompt artifact
@@ -90,7 +90,7 @@ The registry controls capability expansion. Enrichment and models cannot introdu
 - Platform, language, framework, version, and prohibition constraints are extracted.
 - Discovery returns only registry-backed actionable options.
 - Unsupported discoveries remain visible and non-actionable.
-- Final proposals require a confirmed generator ID.
+- Final proposals require a registered generator ID; discovery may auto-advance a high-confidence registered result, while every review-required path still needs explicit confirmation.
 - Unsupported, ambiguous, conflicting, low-confidence, or incompatible intent returns review-required.
 - No unsupported brief is silently routed to a legacy web template.
 
@@ -201,7 +201,7 @@ Current record:
 - focused rendering, API-client, provider, and export checks pass with 19 tests;
 - the live API mutation flow has been verified for tag persistence and blueprint deletion;
 - release `v1.0.0` is tagged and merged into local `main`;
-- the full suite currently reports 79 passing tests after aligning and rebuilding `better-sqlite3` for the active Node runtime; the local API is verified on port 3001 with `GET /api/providers/status`.
+- the full suite currently reports 88 passing tests; the local API is verified on port 3001 with `GET /api/providers/status`.
 
 ## 11. Release rule
 

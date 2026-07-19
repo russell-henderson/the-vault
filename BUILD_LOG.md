@@ -341,3 +341,33 @@ For each meaningful milestone, record the date, model used, repository state, ma
 - **Implementation:** Cloud model names are now retained from Ollama discovery, labeled in the UI, accepted by generation validation, and supported with optional `OLLAMA_API_KEY` bearer authentication for direct `https://ollama.com` access from a hosted API.
 - **Human Decision:** Requested support for available Ollama cloud models for one or two demonstrations without replacing the existing Ollama workflow.
 - **Verification:** Focused provider/workflow tests passed (15 tests); full suite passed (18 files, 81 tests); `npm run typecheck`, `npm run build`, and `git diff --check` passed.
+
+## 2026-07-19 — Implementation-ready technical document generation
+
+- **Decision:** Keep generated PRDs stakeholder-facing and move implementation detail into focused technical documents. Add `DEVELOPMENT_PLAN.md` and `TESTING_STRATEGY.md` as selectable core-document artifacts.
+- **Implementation:** Architecture prompts now require explicit `ParsingService` and `ProgressService` flows; data-model prompts require JSON-Schema-style `Course` and `Assignment` definitions; component prompts focus on BentoGrid, Timeline, and AssignmentEditor. The shared workspace contract, API inventory, and React document selector recognize the two new documents.
+- **Verification:** `npm run typecheck` and `npm test` passed (18 files, 87 tests).
+
+## 2026-07-19 — Policy metadata capability inheritance
+
+- **Decision:** Replace keyword aliases with registry-owned primary/secondary capability inheritance so domain intent remains descriptive and the primary technical requirements stay explicit.
+- **Implementation:** The React/TypeScript policy groups Fleet Controller intent under UI, logic, and infrastructure secondary capabilities. The orchestrator detects those groups and submits the policy's React, TypeScript, and Tailwind primary requirements to the existing registry gate.
+- **Verification:** Focused authorization and registry tests, `npm run typecheck`, and `npm test` passed (18 files, 88 tests).
+
+## 2026-07-19 — Registry-owned constraint synonyms
+
+- **Decision:** Preserve ADR-001's hard constraint gate while allowing the registry to define a bounded set of authorized domain-term synonyms.
+- **Implementation:** The React/TypeScript policy maps Frontend, components, dashboard, and UI to React; monitoring, controller, telemetry, model, and data to TypeScript; and showing and interface to Tailwind. The orchestrator resolves only extracted unrecognized terms in that policy map before validation; all other terms remain review-required.
+- **Verification:** Focused orchestrator tests, `npm run typecheck`, and `npm test` passed (18 files, 89 tests).
+
+## 2026-07-19 — Primary constraint injection after synonym resolution
+
+- **Decision:** A successful registry synonym match may supply the selected policy's primary technical constraints to the authorization context; it must not alter the raw user brief or authorize vocabulary outside that map.
+- **Implementation:** The orchestrator retains resolved domain terms in the authorization manifest and injects React, TypeScript, and Tailwind only after a React/TypeScript synonym match. Unknown terms continue through the existing review-required path.
+- **Verification:** Focused orchestrator tests, `npm run typecheck`, and `npm test` passed (18 files, 89 tests).
+
+## 2026-07-19 — Rollback to capability inheritance baseline
+
+- **Decision:** Removed the registry synonym and primary-token injection experiments after they regressed orchestration behavior. Capability inheritance remains the sole policy metadata mechanism.
+- **Implementation:** Restored direct extracted-constraint validation in the orchestrator, removed the synonym policy contract and React/TypeScript synonym map, and retained the recursive primary/secondary capability check.
+- **Verification:** Focused orchestrator tests, `npm run typecheck`, and `npm test` passed (18 files, 88 tests).

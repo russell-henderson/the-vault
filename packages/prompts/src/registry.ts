@@ -15,6 +15,7 @@ export type ConstraintHints = {
   unrecognizedMentions: string[];
   versions?: Array<{ technology: string; version: string }>;
   unresolvedMentions?: string[];
+  tokens?: string[];
 };
 
 export type GeneratorDiscoveryOption = DiscoveryRegistryOption;
@@ -34,6 +35,7 @@ export type GeneratorCapability = {
   domainProfile: DomainProfile;
   platform: "mobile" | "desktop" | "web";
   supportedIntentSignals: string[];
+  policyMetadata?: { capabilities: { primary: string[]; secondary: Record<string, string[]> } };
   architecturalTraits: string[];
   requiredComponentKinds: string[];
   synthesisContext: ArchitectureSynthesisContext;
@@ -111,11 +113,12 @@ function policyFor(config: Omit<GeneratorDefinition, "classify" | "buildInstruct
       language: config.language,
       frameworks: config.frameworkOptions,
       capabilities: config.requiredComponentKinds,
-      capabilityFingerprint: [...config.supportedIntentSignals, ...config.requiredComponentKinds].sort()
+      capabilityFingerprint: [...new Set([...config.supportedIntentSignals, ...config.requiredComponentKinds])].sort()
     },
     versions: { generator: config.version, supported: [config.version], default: config.version },
     templates: [{ id: `${config.stackId}-default`, supportedVersions: [config.version], status: "supported" as const }],
     constraints: { requires: config.constraints, conflicts: config.prohibitedSubstitutions },
+    policyMetadata: config.policyMetadata ?? { capabilities: { primary: [config.language], secondary: {} } },
     lifecycle: { status: "supported" as const },
     metadata: { owner: "vault-architecture", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-07-17T00:00:00.000Z" }
   };
@@ -265,7 +268,7 @@ export function createGeneratorRegistry(): GeneratorRegistry {
   return new GeneratorRegistry([
     definition({ id: "swift-spritekit", stackId: "swift-spritekit", domainProfile: "mobile-physics", platform: "mobile", version: "2.0.0", requiredComponentKinds: ["PhysicsController", "SceneLayer", "EntityNode", "InputController", "PersistenceManager"], supportedIntentSignals: ["swift", "spritekit", "ios", "mobile", "physics", "collision", "sprite", "game loop"], architecturalTraits: ["scene graph", "physics loop", "touch input"], language: "Swift", frameworkOptions: ["SpriteKit"], constraints: ["Keep physics state inside the scene boundary.", "Keep entity lifecycle and collision rules explicit."], prohibitedSubstitutions: ["SwiftUI without SpriteKit intent", "React", "Flet"], signalRules: [{ id: "swift", phrases: ["swift"], weight: 2, category: "language" }, { id: "spritekit", phrases: ["spritekit"], weight: 8, category: "framework" }, { id: "ios", phrases: ["ios", "iphone", "ipad"], weight: 3, category: "platform" }, { id: "mobile", phrases: ["mobile", "mobile app"], weight: 2, category: "platform" }, { id: "physics", phrases: ["physics", "physics simulation"], weight: 4, category: "domain" }, { id: "collision", phrases: ["collision", "collision handling"], weight: 3, category: "domain" }, { id: "sprite", phrases: ["sprite", "sprites"], weight: 2, category: "domain" }, { id: "game-loop", phrases: ["game loop", "game-loop", "update loop"], weight: 3, category: "domain" }], conflictRules: [{ id: "swiftui-conflict", phrases: ["swiftui", "swift ui"], reason: "SwiftUI intent is distinct from SpriteKit and no SwiftUI generator is registered." }, { id: "web-conflict", phrases: ["react", "tailwind", "browser", "web dashboard"], reason: "Web UI signals conflict with the mobile physics generator." }] }),
     definition({ id: "python-flet", stackId: "python-flet", domainProfile: "desktop-ui", platform: "desktop", version: "2.0.0", requiredComponentKinds: ["ViewLayer", "EventController", "StateModel", "ServiceAdapter", "PersistenceManager"], supportedIntentSignals: ["python", "flet", "desktop", "window", "form", "native app"], architecturalTraits: ["window lifecycle", "event handlers", "desktop persistence"], language: "Python", frameworkOptions: ["Flet"], constraints: ["Keep persistence behind the adapter boundary.", "Keep desktop event handlers separate from view composition."], prohibitedSubstitutions: ["SpriteKit", "React", "SwiftUI"], signalRules: [{ id: "python", phrases: ["python"], weight: 3, category: "language" }, { id: "flet", phrases: ["flet"], weight: 8, category: "framework" }, { id: "desktop", phrases: ["desktop", "desktop app"], weight: 3, category: "platform" }, { id: "window", phrases: ["window", "windowed"], weight: 2, category: "domain" }, { id: "form", phrases: ["form", "forms"], weight: 2, category: "domain" }, { id: "native-app", phrases: ["native app", "desktop ui"], weight: 3, category: "domain" }], conflictRules: [{ id: "mobile-conflict", phrases: ["spritekit", "swiftui", "ios", "iphone"], reason: "Mobile framework signals conflict with the desktop UI generator." }, { id: "web-conflict", phrases: ["react", "browser", "web dashboard"], reason: "Web UI signals conflict with the desktop UI generator." }] }),
-    definition({ id: "react-typescript", stackId: "react-typescript", domainProfile: "web-dashboard", platform: "web", version: "2.0.0", requiredComponentKinds: ["ViewLayer", "StateController", "ApiAdapter", "AccessibilityLayer", "PersistenceManager"], supportedIntentSignals: ["react", "typescript", "tsx", "web", "browser", "dashboard", "analytics", "panel", "tailwind", "responsive", "accessible"], architecturalTraits: ["browser UI", "API boundary", "responsive accessibility"], language: "TypeScript", frameworkOptions: ["React", "React + Tailwind"], constraints: ["Keep server persistence behind the API boundary.", "Render explicit loading, error, empty, and ready states.", "Preserve keyboard accessibility."], prohibitedSubstitutions: ["SpriteKit", "Flet", "SwiftUI"], signalRules: [{ id: "react", phrases: ["react"], weight: 7, category: "framework" }, { id: "typescript", phrases: ["typescript", "type script"], weight: 4, category: "language" }, { id: "tsx", phrases: ["tsx"], weight: 4, category: "language" }, { id: "web", phrases: ["web", "website", "web app"], weight: 3, category: "platform" }, { id: "browser", phrases: ["browser"], weight: 3, category: "platform" }, { id: "dashboard", phrases: ["dashboard", "admin dashboard"], weight: 5, category: "domain" }, { id: "analytics", phrases: ["analytics", "analytics panel"], weight: 3, category: "domain" }, { id: "panel", phrases: ["panel", "panels"], weight: 2, category: "domain" }, { id: "tailwind", phrases: ["tailwind"], weight: 3, category: "framework" }, { id: "responsive", phrases: ["responsive"], weight: 2, category: "supporting" }, { id: "accessible", phrases: ["accessible", "accessibility", "keyboard navigation"], weight: 2, category: "supporting" }], conflictRules: [{ id: "mobile-conflict", phrases: ["spritekit", "swiftui", "ios", "iphone"], reason: "Mobile framework signals conflict with the web dashboard generator." }, { id: "desktop-conflict", phrases: ["flet", "desktop app", "native app"], reason: "Desktop UI signals conflict with the web dashboard generator." }] })
+    definition({ id: "react-typescript", stackId: "react-typescript", domainProfile: "web-dashboard", platform: "web", version: "2.0.0", requiredComponentKinds: ["ViewLayer", "StateController", "ApiAdapter", "AccessibilityLayer", "PersistenceManager"], supportedIntentSignals: ["accessible", "analytics", "api", "browser", "components", "controller", "css", "dashboard", "data", "database", "distributed", "frontend", "interface", "model", "monitoring", "panel", "react", "responsive", "showing", "system", "tailwind", "tailwind css", "telemetry", "tsx", "typescript", "ui", "web"], policyMetadata: { capabilities: { primary: ["react", "typescript", "tailwind"], secondary: { ui: ["frontend", "components", "dashboard", "showing"], logic: ["controller", "model", "data", "api"], infrastructure: ["telemetry", "distributed", "system", "monitoring"] } } }, architecturalTraits: ["browser UI", "API boundary", "responsive accessibility"], language: "TypeScript", frameworkOptions: ["React", "Tailwind", "React + Tailwind"], constraints: ["Keep server persistence behind the API boundary.", "Render explicit loading, error, empty, and ready states.", "Preserve keyboard accessibility."], prohibitedSubstitutions: ["SpriteKit", "Flet", "SwiftUI"], signalRules: [{ id: "react", phrases: ["react"], weight: 7, category: "framework" }, { id: "typescript", phrases: ["typescript", "type script"], weight: 4, category: "language" }, { id: "tsx", phrases: ["tsx"], weight: 4, category: "language" }, { id: "web", phrases: ["web", "website", "web app"], weight: 3, category: "platform" }, { id: "browser", phrases: ["browser"], weight: 3, category: "platform" }, { id: "dashboard", phrases: ["dashboard", "admin dashboard"], weight: 5, category: "domain" }, { id: "analytics", phrases: ["analytics", "analytics panel"], weight: 3, category: "domain" }, { id: "panel", phrases: ["panel", "panels"], weight: 2, category: "domain" }, { id: "tailwind", phrases: ["tailwind"], weight: 3, category: "framework" }, { id: "responsive", phrases: ["responsive"], weight: 2, category: "supporting" }, { id: "accessible", phrases: ["accessible", "accessibility", "keyboard navigation"], weight: 2, category: "supporting" }], conflictRules: [{ id: "mobile-conflict", phrases: ["spritekit", "swiftui", "ios", "iphone"], reason: "Mobile framework signals conflict with the web dashboard generator." }, { id: "desktop-conflict", phrases: ["flet", "desktop app", "native app"], reason: "Desktop UI signals conflict with the web dashboard generator." }] })
   ]);
 }
 
@@ -379,30 +382,22 @@ export class GeneratorRegistry {
 }
 
 export function generateCodexPrompt(blueprint: BlueprintInput): string {
-  const list = (items: string[]) => items && items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "- None specified";
-  const techConstraints = blueprint.technicalConstraints ? list(blueprint.technicalConstraints) : "- None specified";
   return [
-    "You are an expert product manager and software architect.",
-    "Your task is to generate a comprehensive, professional Product Requirement Document (PRD.md) based on the project specification below.",
+    "You are an expert product manager writing a stakeholder-facing Product Requirement Document (PRD.md).",
+    "Your task is to define the product value, user needs, scope, and measurable outcomes without prescribing implementation.",
     "",
     "### [CONTEXT_BLOCK: IDENTITY]",
     `- Project Name: ${blueprint.name}`,
     `- Description: ${blueprint.description}`,
-    `- Target Path: ${blueprint.targetPath}`,
     "",
     "### [CONTEXT_BLOCK: SPECIFICATION]",
     `- Project Scope & Goals: ${blueprint.architectureOverview}`,
     `- Target Audience & Use Cases: ${blueprint.coreLogic}`,
-    `- Document Layout: ${blueprint.layoutDesign}`,
-    `- Dependencies: ${list(blueprint.dependencies)}`,
-    "",
-    "### [CONTEXT_BLOCK: CONSTRAINTS]",
-    `- Technical Constraints: ${techConstraints}`,
-    `- Comments & Extra Context: ${list(blueprint.constraints)}`,
     "",
     "## Output Requirements",
     "Generate only the complete, raw content of `PRD.md` in clean markdown format.",
-    "The document should have standard sections: Executive Summary, Scope, User Personas, Core Use Cases, Technical Architecture & Constraints, and Success Metrics.",
+    "The document should have standard sections: Executive Summary, Problem and Value Proposition, Target Users, Core Use Cases, Product Scope, Non-Goals, and Success Metrics.",
+    "Do not include technical architecture, implementation constraints, dependencies, APIs, data models, provider details, or infrastructure choices. Keep the document understandable to stakeholders.",
     "Do not wrap your output in a markdown block, just output the raw markdown text."
   ].join("\n");
 }
@@ -430,10 +425,24 @@ export function generateContextSummary(blueprint: BlueprintInput): string {
 }
 
 export function generateCoreDocumentPrompt(prdText: string, filename: CoreDocumentFilename): string {
+  const documentInstruction = filename === "ARCHITECTURE.md"
+    ? "You are a Staff Software Engineer writing ARCHITECTURE.md. Define implementation only; do not summarize the product, repeat the executive summary, or list personas. Replace any generic AI Service with two explicit services: ParsingService for syllabus extraction and validation, and ProgressService for progress calculations and state transitions. Output must include: 1. A concrete component-to-service flow showing BentoGrid, Timeline, and AssignmentEditor through ParsingService and ProgressService to the public API and persistence. 2. A frontend component tree and folder structure. 3. Global-versus-local state rules. 4. Client-to-persistence data-flow mappings. Do not use an AI-service black box or include internal system context tags."
+    : filename === "API.md"
+      ? "You are a Backend Systems Architect writing the API.md contract. CRITICAL RULE: Do not invent internal service endpoints (e.g., /persistence or /database). You must only define the public-facing HTTP boundary. Output must include: 1. Base URL & Auth strategy. 2. Resource-Based Routes (e.g., GET /api/v1/resource). 3. Explicit JSON request/response payloads with data types. 4. Standardized JSON error envelopes. DO NOT include internal system context tags in your output."
+      : filename === "DATA_MODELS.md"
+        ? "You are a Database Architect writing DATA_MODELS.md. Define the persistence schema without summarizing the PRD. Output must include: 1. An entity-relationship diagram (text or Mermaid). 2. Concrete JSON-Schema-style definitions for Course and Assignment, including required fields, identifiers, types, validation constraints, and the Course-to-Assignment relationship. 3. Table definitions with columns, data types, and primary/foreign keys. 4. Indexing and caching strategies. Do not echo [CONTEXT_BLOCK] labels."
+        : filename === "COMPONENTS.md"
+          ? "You are a Frontend Architect writing COMPONENTS.md. Define only the high-logic UI structure; exclude trivial layout components such as Header and Footer. Output must focus on BentoGrid, Timeline, and AssignmentEditor and include: 1. Their component-tree relationships. 2. State ownership and smart-versus-presentational boundaries. 3. Explicit TypeScript-style prop contracts, events, loading/error states, and accessibility behavior. Do not echo [CONTEXT_BLOCK] labels."
+          : filename === "DEVELOPMENT_PLAN.md"
+            ? "You are an Engineering Manager writing DEVELOPMENT_PLAN.md. Produce an implementation-ready three-phase execution roadmap: Phase 1 foundation and data flow, Phase 2 core user workflows and service integration, and Phase 3 hardening, verification, and release readiness. For each phase, define objectives, scoped deliverables, dependencies, acceptance criteria, and risks. Do not repeat the PRD or echo [CONTEXT_BLOCK] labels."
+            : filename === "TESTING_STRATEGY.md"
+              ? "You are a Quality Engineering Lead writing TESTING_STRATEGY.md. Define an implementation-ready test strategy focused on unit tests for BentoGrid, Timeline, and AssignmentEditor; contract tests for the public API; and precision tests for ParsingService syllabus extraction, validation, and ambiguity handling. Include test layers, representative cases, fixtures, failure paths, quality gates, and ownership. Do not repeat the PRD or echo [CONTEXT_BLOCK] labels."
+              : "Generate the requested technical document from the PRD without repeating it verbatim.";
   return [
     "You are an expert technical writer and software architect.",
     `Generate only the complete raw Markdown content for ${filename}.`,
     "The PRD below is the primary system context and immutable architectural source of truth. Do not invent a different product, stack, or scope.",
+    documentInstruction,
     "",
     "### [CONTEXT_BLOCK: IDENTITY]",
     `- Target document: ${filename}`,
@@ -448,6 +457,7 @@ export function generateCoreDocumentPrompt(prdText: string, filename: CoreDocume
     "- Output only the requested document content.",
     "",
     "## PRIMARY SYSTEM CONTEXT: PRD.md",
-    prdText
+    prdText,
+    "You are generating a final markdown file. Do not echo, print, or acknowledge the [CONTEXT_BLOCK] labels."
   ].join("\n");
 }

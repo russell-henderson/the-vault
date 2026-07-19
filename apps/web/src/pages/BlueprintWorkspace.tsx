@@ -4,7 +4,7 @@ import { api } from "../lib/api";
 import { MarkdownPreview } from "../components/MarkdownPreview";
 import { downloadMarkdown, downloadWorkspaceZip } from "../lib/workspace-export";
 
-const coreDocumentFilenames: CoreDocumentFilename[] = ["README.md", "ARCHITECTURE.md", "API.md", "DEPLOYMENT.md", "TROUBLESHOOTING.md"];
+const coreDocumentFilenames: CoreDocumentFilename[] = ["README.md", "ARCHITECTURE.md", "API.md", "DATA_MODELS.md", "COMPONENTS.md", "DEVELOPMENT_PLAN.md", "TESTING_STRATEGY.md", "DEPLOYMENT.md", "TROUBLESHOOTING.md"];
 const primaryThoughtMessages = [
   "Firing up the inference engines...",
   "Consulting the knowledge vault...",

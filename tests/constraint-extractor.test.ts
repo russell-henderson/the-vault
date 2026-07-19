@@ -69,4 +69,10 @@ describe("constraint extraction gate", () => {
 
     expect(result.unrecognizedMentions).toEqual([]);
   });
+
+  it("ignores ordinary descriptive and styling words", () => {
+    const result = extractConstraints("Build a student-based rich dashboard styled with CSS.");
+
+    expect(result.unrecognizedMentions).toEqual([]);
+  });
 });
