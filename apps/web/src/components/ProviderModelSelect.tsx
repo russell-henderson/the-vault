@@ -11,11 +11,11 @@ export function ProviderModelSelect({ label, selection, options, loading, onChan
   const selectedOption = options.find((option) => `${option.provider}:${option.model}` === value);
   const baseOptions = options.some((option) => option.provider === "mock") ? options : [...options, { provider: "mock" as const, model: "deterministic-local", label: "Deterministic mock", available: true, cloud: false }];
 
-  // Keep the model list bounded to the locally supported generation families.
+  // Keep local generation choices bounded while allowing every Ollama cloud model returned by the server.
   const allowedPrefixes = ["deepseek-r1", "dolphin3", "llama3.2"];
   const filteredBaseOptions = baseOptions.filter(
     (option) =>
-      option.capability !== "embedding" && (option.provider === "mock" || allowedPrefixes.some((p) => option.model.toLowerCase().includes(p)))
+      option.capability !== "embedding" && (option.provider === "mock" || option.cloud || allowedPrefixes.some((p) => option.model.toLowerCase().includes(p)))
   );
 
   const visibleOptions = !selectedOption
@@ -30,6 +30,6 @@ export function ProviderModelSelect({ label, selection, options, loading, onChan
     <option value={`${effectiveSelection.provider}:`}>Choose a model…</option>
     {loading && visibleOptions.length === 0 && <option value={value}>Loading catalog…</option>}
     {!loading && visibleOptions.length === 0 && <option value={value}>No provider models found</option>}
-    {visibleOptions.map((option) => <option key={`${option.provider}:${option.model}`} value={`${option.provider}:${option.model}`} disabled={!option.available}>{option.provider === "mock" ? option.label : `${option.provider === "openrouter" ? "OpenRouter" : "Ollama"} · ${option.label}`}{!option.available ? " (unavailable)" : ""}</option>)}
+    {visibleOptions.map((option) => <option key={`${option.provider}:${option.model}`} value={`${option.provider}:${option.model}`} disabled={!option.available}>{option.provider === "mock" ? option.label : `${option.provider === "openrouter" ? "OpenRouter" : "Ollama"} · ${option.label}${option.cloud ? " · cloud" : ""}`}{!option.available ? " (unavailable)" : ""}</option>)}
   </select></label>;
 }

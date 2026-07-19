@@ -216,13 +216,13 @@ Current adapters are:
 - OllamaAiProvider: local HTTP discovery, structured proposal, and execution provider.
 - OpenRouterEmbeddingProvider: server-side multimodal embedding probe using the explicitly selected `nvidia/llama-nemotron-embed-vl-1b-v2:free` model. It is not a text-generation provider and cannot be selected for blueprint or document generation.
 
-Analysis and creation selections are independent and ephemeral. The Ollama catalog is manually refreshed and cloud-tagged models are excluded. The mock is explicit and must never be described as Ollama.
+Analysis and creation selections are independent and ephemeral. The Ollama catalog is manually refreshed, and cloud-tagged models returned by Ollama are included and labeled as cloud options. Local Ollama access uses the local service; direct hosted access uses `OLLAMA_BASE_URL` plus the server-side `OLLAMA_API_KEY`. The mock is explicit and must never be described as Ollama.
 
 Provider inputs are bounded and must not contain unrestricted workspace access, secrets, raw enrichment, or unsupported discoveries as authorization. Provider output is untrusted and must be parsed, schema-validated, size-limited, and reviewed.
 
 The normal API path passes confirmedBrief and AuthorizedSynthesisContext for final blueprint synthesis. Provider compatibility paths that accept a plain synthesis context remain a hardening gap.
 
-Provider configuration is local and environment-based. `AI_PROVIDER=ollama` selects Ollama as the configured provider and `OLLAMA_BASE_URL` defaults to `http://localhost:11434`; no analysis or creation model is silently selected. The deterministic mock remains available as an explicit catalog option for offline development. The UI requires an explicit analysis and creation model choice, while the API retains legacy configured/mock request compatibility. `OPENROUTER_API_KEY` enables the separate embedding evaluation route; the key stays on the API server and is never sent to the browser.
+Provider configuration is environment-based. `AI_PROVIDER=ollama` selects the configured provider and `OLLAMA_BASE_URL` defaults to `http://localhost:11434`; `OLLAMA_API_KEY` is sent only when configured, enabling direct access to `https://ollama.com` from a hosted API. No analysis or creation model is silently selected. The deterministic mock remains available as an explicit catalog option for offline development. The UI requires an explicit analysis and creation model choice, while the API retains legacy configured/mock request compatibility. `OPENROUTER_API_KEY` enables the separate embedding evaluation route; the key stays on the API server and is never sent to the browser.
 
 Execution follows one bounded lifecycle: create a pending record, validate the provider, mark it running, generate or stream output, persist completed or failed evidence, and allow human verification. The streaming workspace closes each `EventSource` on completion, error, or unmount and commits only completed document buffers to the local workspace state.
 

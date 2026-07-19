@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isCloudModel, localModelNames, OllamaAiProvider } from "../apps/api/src/providers/ollama-provider";
+import { availableModelNames, isCloudModel, localModelNames, OllamaAiProvider } from "../apps/api/src/providers/ollama-provider";
 
 describe("Ollama provider", () => {
   const reactSynthesis = {
@@ -91,14 +91,30 @@ describe("Ollama provider", () => {
     fetchMock.mockRestore();
   });
 
-  it("filters cloud models and always includes the deterministic mock", async () => {
+  it("labels cloud models and includes them alongside the deterministic mock", async () => {
     expect(isCloudModel("llama3.2:cloud")).toBe(true);
     expect(localModelNames(["llama3.2:cloud", "dolphin3:8b", "dolphin3:8b", "llama3.2-16k:latest"])).toEqual(["dolphin3:8b", "llama3.2-16k:latest"]);
+    expect(availableModelNames(["llama3.2:cloud", "dolphin3:8b", "dolphin3:8b"])).toEqual(["dolphin3:8b", "llama3.2:cloud"]);
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ models: [{ name: "llama3.2:3b" }, { name: "llama3.2:cloud" }] }), { status: 200 }));
     const catalog = await new OllamaAiProvider("http://ollama.test", "llama3.2:3b", "llama3.2:3b").catalog({ analysis: { provider: "ollama", model: "llama3.2:3b" }, creation: { provider: "ollama", model: "llama3.2:3b" } });
-    expect(catalog.models.map((model) => model.model)).toEqual(["llama3.2:3b", "deterministic-local"]);
+    expect(catalog.models.map((model) => model.model)).toEqual(["llama3.2:3b", "llama3.2:cloud", "deterministic-local"]);
+    expect(catalog.models.find((model) => model.model === "llama3.2:cloud")).toMatchObject({ available: true, cloud: true });
     expect(catalog.models.find((model) => model.provider === "mock")?.available).toBe(true);
     fetchMock.mockRestore();
+  });
+
+  it("adds bearer authentication when configured for a hosted Ollama endpoint", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ models: [{ name: "llama3.2:cloud" }] }), { status: 200 }));
+    await new OllamaAiProvider("https://ollama.com", "llama3.2:cloud", "llama3.2:cloud", "ollama-test-key").listModels();
+    expect(fetchMock).toHaveBeenCalledWith("https://ollama.com/api/tags", { headers: { "content-type": "application/json", authorization: "Bearer ollama-test-key" } });
+    fetchMock.mockRestore();
+  });
+
+  it("marks models from the direct Ollama Cloud endpoint as cloud options", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ models: [{ name: "gpt-oss:120b" }] }), { status: 200 }));
+    const catalog = await new OllamaAiProvider("https://ollama.com", "gpt-oss:120b", "gpt-oss:120b", "ollama-test-key").catalog({ analysis: { provider: "ollama", model: "gpt-oss:120b" }, creation: { provider: "ollama", model: "gpt-oss:120b" } });
+    expect(catalog.models.find((model) => model.model === "gpt-oss:120b")).toMatchObject({ available: true, cloud: true });
+    vi.restoreAllMocks();
   });
 
   it("streams Ollama NDJSON chunks with stream enabled", async () => {

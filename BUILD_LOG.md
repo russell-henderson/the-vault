@@ -334,3 +334,10 @@ For each meaningful milestone, record the date, model used, repository state, ma
 - **Stale-selection handling:** Removed phi4 and stale model URLs now clear the selection instead of silently switching to `mock:deterministic-local`.
 - **Embedding boundary:** Added the server-side `OpenRouterEmbeddingProvider` and catalog entry for `nvidia/llama-nemotron-embed-vl-1b-v2:free`. The model is exposed as an embedding evaluation choice, not as a text-generation model, and `OPENROUTER_API_KEY` is never exposed to the browser.
 - **Verification:** The provider catalog shows local generation models and the OpenRouter embedding model separately; generation routes reject embedding selections; the mocked SDK contract returns a bounded vector preview. `npm test` passes with 18 files and 80 tests; `npm run typecheck`, `npm run build`, and `git diff --check` pass. The live probe correctly returns a controlled missing-key response until `OPENROUTER_API_KEY` is configured.
+
+## 2026-07-18 — Ollama cloud model selection for demonstrations
+
+- **Decision:** Keep Ollama as the generation provider while allowing cloud-tagged Ollama models to appear in the catalog and be selected for analysis or creation. Preserve the OpenRouter integration as a separate embedding/other-provider boundary.
+- **Implementation:** Cloud model names are now retained from Ollama discovery, labeled in the UI, accepted by generation validation, and supported with optional `OLLAMA_API_KEY` bearer authentication for direct `https://ollama.com` access from a hosted API.
+- **Human Decision:** Requested support for available Ollama cloud models for one or two demonstrations without replacing the existing Ollama workflow.
+- **Verification:** Focused provider/workflow tests passed (15 tests); full suite passed (18 files, 81 tests); `npm run typecheck`, `npm run build`, and `git diff --check` passed.

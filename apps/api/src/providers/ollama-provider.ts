@@ -9,8 +9,17 @@ export function isCloudModel(model: string): boolean {
   return model.toLowerCase().split(":").some((segment) => segment === "cloud" || /(^|[-_])cloud($|[-_])/.test(segment));
 }
 
+function isHostedCloudEndpoint(baseUrl: string): boolean {
+  try { return new URL(baseUrl).hostname === "ollama.com"; }
+  catch { return false; }
+}
+
 export function localModelNames(models: string[]): string[] {
   return [...new Set(models.map((model) => model.trim()).filter((model) => model && !isCloudModel(model)))].sort((left, right) => left.localeCompare(right));
+}
+
+export function availableModelNames(models: string[]): string[] {
+  return [...new Set(models.map((model) => model.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right));
 }
 
 export function isRemovedOllamaModel(model?: string): boolean {
@@ -180,12 +189,21 @@ export class OllamaAiProvider implements AiProvider {
   readonly baseUrl: string;
   readonly analysisModel?: string;
   readonly creationModel?: string;
+  readonly apiKey: string;
   get model(): string | undefined { return this.creationModel; }
 
-  constructor(baseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434", analysisModel = process.env.OLLAMA_ANALYSIS_MODEL ?? process.env.OLLAMA_MODEL, creationModel = process.env.OLLAMA_CREATION_MODEL ?? process.env.OLLAMA_MODEL) {
+  constructor(baseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434", analysisModel = process.env.OLLAMA_ANALYSIS_MODEL ?? process.env.OLLAMA_MODEL, creationModel = process.env.OLLAMA_CREATION_MODEL ?? process.env.OLLAMA_MODEL, apiKey = process.env.OLLAMA_API_KEY ?? "") {
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.analysisModel = isRemovedOllamaModel(analysisModel) ? undefined : analysisModel;
     this.creationModel = isRemovedOllamaModel(creationModel) ? undefined : creationModel;
+    this.apiKey = apiKey.trim();
+  }
+
+  private headers(): Record<string, string> {
+    return {
+      "content-type": "application/json",
+      ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {})
+    };
   }
 
   private requireModel(model: string | undefined, role: "analysis" | "creation"): string {
@@ -235,7 +253,7 @@ export class OllamaAiProvider implements AiProvider {
     try {
       response = await fetch(`${this.baseUrl}/api/generate`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: this.headers(),
         body: JSON.stringify({ model, prompt: request.prompt, stream: true }),
         signal: request.signal
       });
@@ -281,7 +299,7 @@ export class OllamaAiProvider implements AiProvider {
 
   async health() {
     try {
-      const response = await fetch(`${this.baseUrl}/api/tags`);
+      const response = await fetch(`${this.baseUrl}/api/tags`, { headers: this.headers() });
       if (!response.ok) return { available: false, detail: `Ollama returned HTTP ${response.status}`, models: { analysis: this.analysisModel, creation: this.creationModel } };
       const body = await response.json() as OllamaTagsResponse;
       const names = (body.models ?? []).map((model) => model.name ?? "");
@@ -295,20 +313,21 @@ export class OllamaAiProvider implements AiProvider {
   async catalog(configured: { analysis: ProviderSelection; creation: ProviderSelection }): Promise<ProviderCatalog> {
     const refreshedAt = new Date().toISOString();
     const result = await this.listModels();
-    const localModels = localModelNames(result.models).filter((model) => !isRemovedOllamaModel(model));
+    const localModels = availableModelNames(result.models).filter((model) => !isRemovedOllamaModel(model));
     const configuredModels = [configured.analysis, configured.creation]
       .filter((selection) => selection.provider === "ollama" && selection.model)
       .map((selection) => selection.model as string)
       .filter((model) => !isRemovedOllamaModel(model));
-    const allModels = [...localModels, ...configuredModels.filter((model) => !localModels.includes(model) && !isCloudModel(model))];
-    const options: ProviderModelOption[] = allModels.map((model) => ({ provider: "ollama", model, label: model, available: localModels.includes(model), cloud: isCloudModel(model) }));
+    const allModels = [...localModels, ...configuredModels.filter((model) => !localModels.includes(model))];
+    const hostedCloudEndpoint = isHostedCloudEndpoint(this.baseUrl);
+    const options: ProviderModelOption[] = allModels.map((model) => ({ provider: "ollama", model, label: model, available: localModels.includes(model), cloud: hostedCloudEndpoint || isCloudModel(model) }));
     options.push({ provider: "mock", model: "deterministic-local", label: "Deterministic mock", available: true, cloud: false });
     return providerCatalogSchema.parse({ configured, models: options, ollamaAvailable: result.available, detail: result.detail, refreshedAt });
   }
 
   async listModels(): Promise<{ models: string[]; available: boolean; detail: string }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/tags`);
+      const response = await fetch(`${this.baseUrl}/api/tags`, { headers: this.headers() });
       if (!response.ok) return { models: [], available: false, detail: `Ollama returned HTTP ${response.status}` };
       const body = await response.json() as OllamaTagsResponse;
       return { models: (body.models ?? []).map((model) => model.name ?? "").filter(Boolean), available: true, detail: "Ollama catalog refreshed" };
@@ -319,7 +338,7 @@ export class OllamaAiProvider implements AiProvider {
 
   private async request(body: Record<string, unknown>): Promise<OllamaResponse> {
     let response: Response;
-    try { response = await fetch(`${this.baseUrl}/api/generate`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }); }
+    try { response = await fetch(`${this.baseUrl}/api/generate`, { method: "POST", headers: this.headers(), body: JSON.stringify(body) }); }
     catch { throw new Error(`Unable to reach Ollama at ${this.baseUrl}`); }
     const result = await response.json().catch(() => ({})) as OllamaResponse;
     if (!response.ok) throw new Error(result.error ?? `Ollama returned HTTP ${response.status}`);

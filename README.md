@@ -85,12 +85,14 @@ Configure the API with `.env.example` values or environment variables:
 ```bash
 AI_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
+# For direct Ollama Cloud access from a hosted API, use https://ollama.com and set OLLAMA_API_KEY server-side.
+# OLLAMA_API_KEY=your-ollama-cloud-key
 # Choose the analysis and creation models from the dashboard catalog.
 # Optional preconfiguration: OLLAMA_ANALYSIS_MODEL=... and OLLAMA_CREATION_MODEL=...
 # Optional embedding evaluation: OPENROUTER_API_KEY=...
 ```
 
-The dashboard reports provider health and requires an explicit model choice for each generation role. Refresh the catalog after pulling a new local model. Cloud-tagged models are excluded from generation selection. If `OPENROUTER_API_KEY` is configured, the dashboard also exposes the multimodal embedding model `nvidia/llama-nemotron-embed-vl-1b-v2:free` as a separate evaluation choice.
+The dashboard reports provider health and requires an explicit model choice for each generation role. Refresh the catalog after pulling or enabling a model in Ollama. Cloud-tagged Ollama models are shown with a cloud label and can be selected. For a Vercel-hosted API, set `OLLAMA_BASE_URL=https://ollama.com` and the server-side `OLLAMA_API_KEY`; a local API can continue using `http://localhost:11434` with Ollama sign-in handling cloud access. If `OPENROUTER_API_KEY` is configured, the dashboard also exposes the multimodal embedding model `nvidia/llama-nemotron-embed-vl-1b-v2:free` as a separate evaluation choice.
 
 ## Product walkthrough
 

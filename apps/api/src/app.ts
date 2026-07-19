@@ -86,12 +86,12 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
   const openRouterEmbeddings = new OpenRouterEmbeddingProvider();
 
   async function unavailableCreationSelection(selection: ProviderSelection): Promise<string | undefined> {
-    if (invalidMockSelection(selection)) return "The selected mock model is not available in the current local catalog.";
+    if (invalidMockSelection(selection)) return "The selected mock model is not available in the current provider catalog.";
     if (invalidGenerationSelection(selection)) return "Embedding models are only available through the embedding evaluation action.";
     if (selection.provider !== "ollama") return undefined;
     const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
     const inventory = await ollama.listModels();
-    if (!selection.model || isRemovedOllamaModel(selection.model) || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) return "The selected creation model is not available in the current local catalog.";
+    if (!selection.model || isRemovedOllamaModel(selection.model) || !inventory.models.includes(selection.model)) return "The selected creation model is not available in the current Ollama catalog.";
     return undefined;
   }
 
@@ -147,13 +147,13 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
     const parsed = discoveryInputSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid discovery brief", issues: parsed.error.flatten() });
     const selection = parsed.data.analysis ?? selectionFromLegacy(parsed.data.provider, provider, "analysis");
-    if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
+    if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current provider catalog." });
     if (invalidGenerationSelection(selection)) return reply.code(400).send({ error: "Unsupported generation model", message: "Embedding models are only available through the embedding evaluation action." });
     if (selection.provider === "ollama") {
       const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
       const inventory = await ollama.listModels();
-      if (!selection.model || isRemovedOllamaModel(selection.model) || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) {
-        return reply.code(400).send({ error: "Unavailable provider model", message: "The selected analysis model is not available in the current local catalog." });
+      if (!selection.model || isRemovedOllamaModel(selection.model) || !inventory.models.includes(selection.model)) {
+        return reply.code(400).send({ error: "Unavailable provider model", message: "The selected analysis model is not available in the current Ollama catalog." });
       }
     }
     try {
@@ -181,13 +181,13 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
     const preparation = architectureOrchestrator.prepare(parsed.data.brief, parsed.data.generatorId, discovery);
     if (preparation.status !== "ready") return reply.code(422).send({ status: "review-required", classification: preparation.classification, constraints: preparation.constraints, reasons: preparation.reasons, questions: preparation.questions, registryValidation: preparation.registryValidation, availableGenerators: architectureOrchestrator.registry.listCapabilities() });
     const selection = parsed.data.analysis ?? selectionFromLegacy(parsed.data.provider, provider, "analysis");
-    if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
+    if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current provider catalog." });
     if (invalidGenerationSelection(selection)) return reply.code(400).send({ error: "Unsupported generation model", message: "Embedding models are only available through the embedding evaluation action." });
     if (selection.provider === "ollama") {
       const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
       const inventory = await ollama.listModels();
-       if (!selection.model || isRemovedOllamaModel(selection.model) || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) {
-        return reply.code(400).send({ error: "Unavailable provider model", message: "The selected analysis model is not available in the current local catalog." });
+       if (!selection.model || isRemovedOllamaModel(selection.model) || !inventory.models.includes(selection.model)) {
+        return reply.code(400).send({ error: "Unavailable provider model", message: "The selected analysis model is not available in the current Ollama catalog." });
       }
     }
     const selectedProvider = providerForSelection(selection, "analysis", provider);
@@ -246,13 +246,13 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
     const promptArtifact = repository.getPromptArtifact(parsed.data.promptArtifactId);
     if (!promptArtifact) return reply.code(404).send({ error: "Prompt artifact not found" });
     const selection = parsed.data.creation ?? selectionFromLegacy(parsed.data.provider, provider, "creation");
-    if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current local catalog." });
+    if (invalidMockSelection(selection)) return reply.code(400).send({ error: "Unavailable provider model", message: "The selected mock model is not available in the current provider catalog." });
     if (invalidGenerationSelection(selection)) return reply.code(400).send({ error: "Unsupported generation model", message: "Embedding models are only available through the embedding evaluation action." });
     if (selection.provider === "ollama") {
       const ollama = provider instanceof OllamaAiProvider ? provider : new OllamaAiProvider();
       const inventory = await ollama.listModels();
-      if (!selection.model || !inventory.models.includes(selection.model) || inventory.models.some((model) => model === selection.model && model.toLowerCase().split(":").includes("cloud"))) {
-        return reply.code(400).send({ error: "Unavailable provider model", message: "The selected creation model is not available in the current local catalog." });
+      if (!selection.model || !inventory.models.includes(selection.model)) {
+        return reply.code(400).send({ error: "Unavailable provider model", message: "The selected creation model is not available in the current Ollama catalog." });
       }
     }
     const selectedProvider = providerForSelection(selection, "creation", provider);
