@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { BlueprintInput, ProviderCatalog, ProviderStatus } from "@the-vault/shared";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Layout } from "./components/Layout";
 import { api } from "./lib/api";
 import { Dashboard } from "./pages/Dashboard";
@@ -21,5 +22,10 @@ export function App() {
   if (path === "/blueprints/new") content = <BlueprintCreate providerStatus={providerStatus} catalog={catalog} catalogLoading={catalogLoading} onRefreshCatalog={refreshCatalog} onSubmit={createBlueprint} onCancel={() => navigate("/dashboard")} />;
   else if (path.endsWith("/workspace")) content = <BlueprintWorkspace id={path.split("/")[2]} catalog={catalog} catalogLoading={catalogLoading} onRefreshCatalog={refreshCatalog} onNavigate={navigate} />;
   else if (path.startsWith("/blueprints/")) content = <BlueprintDetail id={path.split("/")[2]} catalog={catalog} catalogLoading={catalogLoading} onRefreshCatalog={refreshCatalog} onNavigate={navigate} />;
-  return <Layout providerStatus={providerStatus} catalog={catalog} onNavigate={navigate}>{content}</Layout>;
+  return (
+    <>
+      <Layout providerStatus={providerStatus} catalog={catalog} onNavigate={navigate}>{content}</Layout>
+      <SpeedInsights />
+    </>
+  );
 }
