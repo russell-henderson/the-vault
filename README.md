@@ -115,6 +115,27 @@ Advanced users can select **Use Custom API** on the connection screen and enter 
 
 Chromium browsers may show a **Local Network Access** permission prompt when the secure Vercel site connects to `127.0.0.1`. Allow the prompt to pair with Vault Companion. If the connection later fails, reopen Vault Companion and pair again; pairing tokens are short-lived and are cleared when the browser tab closes. If Ollama is offline, start `ollama serve` or choose the deterministic mock.
 
+## Ephemeral browser generation
+
+Visitors who have not paired an API start in **Ephemeral Mode**. This browser-only workspace generates an architecture, can turn that architecture into selected implementation documents, and lets you download the document workspace as a ZIP. It never creates a Vault record, SQLite database, history entry, disk-sync request, or saved credential. Refreshing or closing the tab clears the generated work and provider session.
+
+Choose **Local Ollama** to use a model already running at `http://127.0.0.1:11434`; no model token is needed. A hosted secure page may need permission to reach loopback. If Chromium reports a blocked connection, restart Ollama with the production origin allowed:
+
+```bash
+OLLAMA_ORIGINS="https://the-vault-dusky.vercel.app" ollama serve
+```
+
+In PowerShell:
+
+```powershell
+$env:OLLAMA_ORIGINS="https://the-vault-dusky.vercel.app"
+ollama serve
+```
+
+Allow the Chromium **Local Network Access** prompt. `OLLAMA_ORIGINS="*"` is suitable only for temporary local troubleshooting, not normal use.
+
+Choose **OpenRouter** to authorize through its OAuth page. The PKCE verifier lives in `sessionStorage` only while the browser redirects; the returned session key remains only in page memory and is lost on refresh. If OAuth is unavailable in a browser, users may instead paste an existing OpenRouter API key; it is used only in memory for that tab and is never written to browser storage. Select **Saved API / Companion mode** whenever you need blueprints, history, or local disk synchronization.
+
 ## Product walkthrough
 
 1. Select **Start with a brief** and describe the intended outcome and constraints.
@@ -145,7 +166,7 @@ The current checks pass:
 
 ```text
 npm run typecheck  ✓
-npm test           ✓ 88 tests
+npm test           ✓ 96 tests
 npm run build      ✓
 ```
 

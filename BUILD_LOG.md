@@ -378,3 +378,12 @@ For each meaningful milestone, record the date, model used, repository state, ma
 - **Implementation:** Added unpaired connection handling, bearer-authenticated fetch streaming, companion-mode Fastify origin/token enforcement, a versioned connection handshake, Electron companion packaging scaffold, and companion onboarding documentation.
 - **Security:** Companion mode binds to loopback only and rejects unauthorized or foreign-origin API requests before route handling, including disk synchronization and streams.
 - **Verification:** `npm run typecheck`, focused companion security/client tests (6 assertions), full suite (90 tests), `npm run build`, and `git diff --check` pass. Windows installer smoke testing remains pending because this environment suppresses Electron's binary download.
+
+## 2026-07-21 — Ephemeral browser generation mode
+
+- **Decision:** Unpaired visitors default to a browser-only workspace rather than an API failure or implicit persistence flow. Saved API, custom API, and Windows Companion mode remain explicit alternatives.
+- **Implementation:** Added Local Ollama and OpenRouter OAuth/PKCE adapters behind a common browser provider contract. Generated content and OpenRouter access tokens remain in React memory; only the temporary PKCE verifier uses session storage during the redirect.
+- **Boundary:** Ephemeral mode does not call Vault API routes, create SQLite records, retain history, or expose provider secrets in local storage. Ollama onboarding includes production-origin CORS and Chromium Local Network Access guidance.
+- **Verification:** `npm run typecheck`, `npm test` (20 files, 96 tests), `npm run build`, and `git diff --check` pass. No commit, push, Railway deployment, or Vercel deployment was performed.
+- **Follow-up:** The ephemeral workspace now carries a generated architecture into selected document generation and ZIP export, still entirely in browser memory rather than the saved Blueprint workspace.
+- **Provider fallback:** Added an explicit existing-OpenRouter-key option for browser environments where the OAuth callback cannot complete. The key is held in React memory only and is not persisted.

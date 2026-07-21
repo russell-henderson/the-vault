@@ -48,7 +48,7 @@ Historical reports record what passed in their recorded environment. They do not
 | Contracts | Shared Zod schemas in packages/shared |
 | Policy and prompts | packages/prompts |
 | Persistence | SQLite through better-sqlite3 and VaultRepository |
-| Providers | Local Ollama, deterministic mock, and server-side OpenRouter embedding adapter |
+| Providers | Local Ollama, deterministic mock, server-side OpenRouter embedding adapter, and browser-only Ollama/OpenRouter ephemeral adapters |
 | Verification | Vitest unit, integration, contract, and workflow tests |
 | Runtime | Local modular monolith with a replaceable provider boundary |
 
@@ -97,6 +97,8 @@ Reviewable history and optional full-trace export
 ~~~
 
 ### Frontend
+
+Unpaired visitors enter `#/ephemeral`, a browser-only generation workspace. It has no Vault API dependency: it lists local Ollama or authorized OpenRouter models, streams an architecture response, and exports it on request. The generated response and provider credential remain in memory. The OAuth PKCE verifier is the sole temporary session-storage value and is deleted after the redirect. Users must explicitly choose Saved API / Companion mode to enter SQLite-backed flows.
 
 - Dashboard: workspace overview, provider signal, metrics, and blueprint library.
 - Dashboard cards support optional browser-local cover art stored in IndexedDB; cover blobs are presentation state and never cross the API or SQLite boundary.
@@ -214,6 +216,8 @@ The packet is domain-neutral and can represent mobile physics, desktop UI, web A
 ### Local companion connection
 
 The production Vercel site is a static client with no configured API base URL. It resolves a paired loopback companion or a user-supplied Vault-compatible HTTPS endpoint at runtime. The Windows companion binds only to `127.0.0.1`, owns a local SQLite database, and grants a short-lived bearer session through a URL fragment that never reaches Vercel. In companion mode, every API route requires the exact production Origin and bearer token before route handling; this includes document streams and disk synchronization. See [ADR-002](adr/ADR-002-local-companion-connection.md).
+
+When no saved connection is active, the web client defaults to a browser-only ephemeral mode. Its Ollama and OpenRouter adapters stream directly from the selected provider and never invoke Vault API routes. Generated output and access credentials are memory-only; the OpenRouter PKCE verifier is stored in session storage only for the OAuth redirect and is removed at callback.
 
 Current adapters are:
 

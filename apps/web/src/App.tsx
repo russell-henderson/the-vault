@@ -9,8 +9,9 @@ import { BlueprintDetail } from "./pages/BlueprintDetail";
 import { BlueprintWorkspace } from "./pages/BlueprintWorkspace";
 import { ConnectionProvider, useConnection } from "./components/ConnectionProvider";
 import { Connect } from "./pages/Connect";
+import { Ephemeral } from "./pages/Ephemeral";
 
-function currentPath() { return (window.location.hash.replace(/^#/, "").split("?")[0] || "/dashboard"); }
+function currentPath() { return (window.location.hash.replace(/^#/, "").split("?")[0] || "/ephemeral"); }
 
 function ConnectedApp() {
   const { profile, disconnect } = useConnection();
@@ -21,7 +22,10 @@ function ConnectedApp() {
   async function createBlueprint(input: BlueprintInput) { const blueprint = await api.createBlueprint(input); setBlueprints((current) => [blueprint, ...current]); navigate(`/blueprints/${blueprint.id}`); }
   function updateBlueprint(updated: Awaited<ReturnType<typeof api.getBlueprint>>) { setBlueprints((current) => current.map((blueprint) => blueprint.id === updated.id ? updated : blueprint)); }
   function deleteBlueprints(ids: string[]) { setBlueprints((current) => current.filter((blueprint) => !ids.includes(blueprint.id))); }
-  if (!profile) return <Connect onConnected={() => { window.location.hash = "/dashboard"; setPath("/dashboard"); }} />;
+  if (!profile) {
+    if (path === "/connect") return <Connect onConnected={() => { window.location.hash = "/dashboard"; setPath("/dashboard"); }} />;
+    return <Ephemeral onOpenSavedMode={() => { window.location.hash = "/connect"; setPath("/connect"); }} />;
+  }
   let content = <Dashboard blueprints={blueprints} providerStatus={providerStatus} loading={loading} error={error} onNavigate={navigate} onBlueprintUpdated={updateBlueprint} onBlueprintsDeleted={deleteBlueprints} />;
   if (path === "/blueprints/new") content = <BlueprintCreate providerStatus={providerStatus} catalog={catalog} catalogLoading={catalogLoading} onRefreshCatalog={refreshCatalog} onSubmit={createBlueprint} onCancel={() => navigate("/dashboard")} />;
   else if (path.endsWith("/workspace")) content = <BlueprintWorkspace id={path.split("/")[2]} catalog={catalog} catalogLoading={catalogLoading} onRefreshCatalog={refreshCatalog} onNavigate={navigate} />;

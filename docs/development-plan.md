@@ -174,6 +174,8 @@ Before direct code-writing or Codex workspace access, define allowed context, fi
 - A static Vercel client must show a connection screen without issuing API requests when unpaired.
 - Companion integration coverage must verify loopback binding, pairing-token expiry, exact origin enforcement, bearer protection of streams and disk sync, and offline recovery.
 - Custom endpoints must pass the versioned connection-info probe before activation.
+- The default unpaired view is an ephemeral browser workspace. It must retain provider credentials and generated content only in memory, avoid all Vault API and persistence calls, and clearly direct users to Saved API / Companion mode for durable work.
+- Local Ollama onboarding must explain exact-origin CORS configuration and Chromium Local Network Access; OpenRouter uses OAuth PKCE with a temporary session-storage verifier only.
 
 - Unit tests for extraction, classification, policy validation, packet rules, prompt generation, and state transitions.
 - Contract tests for provider normalization, catalog filtering, schema validation, and unavailable models.
@@ -207,7 +209,7 @@ Current record:
 - focused rendering, API-client, provider, and export checks pass with 19 tests;
 - the live API mutation flow has been verified for tag persistence and blueprint deletion;
 - release `v1.0.0` is tagged and merged into local `main`;
-- the full suite currently reports 88 passing tests; the local API is verified on port 3001 with `GET /api/providers/status`.
+- the full suite currently reports 96 passing tests; the local API is verified on port 3001 with `GET /api/providers/status`.
 
 ## 11. Release rule
 
