@@ -371,3 +371,10 @@ For each meaningful milestone, record the date, model used, repository state, ma
 - **Decision:** Removed the registry synonym and primary-token injection experiments after they regressed orchestration behavior. Capability inheritance remains the sole policy metadata mechanism.
 - **Implementation:** Restored direct extracted-constraint validation in the orchestrator, removed the synonym policy contract and React/TypeScript synonym map, and retained the recursive primary/secondary capability check.
 - **Verification:** Focused orchestrator tests, `npm run typecheck`, and `npm test` passed (18 files, 88 tests).
+
+## 2026-07-21 — Runtime-configured Windows local companion
+
+- **Decision:** Preserve the production Vercel deployment as a static client and move API selection into browser runtime connection profiles.
+- **Implementation:** Added unpaired connection handling, bearer-authenticated fetch streaming, companion-mode Fastify origin/token enforcement, a versioned connection handshake, Electron companion packaging scaffold, and companion onboarding documentation.
+- **Security:** Companion mode binds to loopback only and rejects unauthorized or foreign-origin API requests before route handling, including disk synchronization and streams.
+- **Verification:** `npm run typecheck`, focused companion security/client tests (6 assertions), full suite (90 tests), `npm run build`, and `git diff --check` pass. Windows installer smoke testing remains pending because this environment suppresses Electron's binary download.

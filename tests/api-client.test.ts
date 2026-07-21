@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
-import { api } from "../apps/web/src/lib/api";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { api, setApiConnection } from "../apps/web/src/lib/api";
 
 describe("web API client", () => {
+  beforeEach(() => setApiConnection({ kind: "companion", baseUrl: "http://127.0.0.1:3001", token: "test-token" }));
+  afterEach(() => setApiConnection(undefined));
   it("serializes a JSON body for prompt compilation", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ promptArtifact: {}, executionRecord: {} }), { status: 201, headers: { "content-type": "application/json" } }));
     await api.generatePrompt("blueprint-1");
@@ -9,6 +11,7 @@ describe("web API client", () => {
     expect(options?.headers).toBeInstanceOf(Headers);
     expect(JSON.parse(String(options?.body))).toEqual({ blueprintId: "blueprint-1" });
     expect((options?.headers as Headers).get("content-type")).toBe("application/json");
+    expect((options?.headers as Headers).get("authorization")).toBe("Bearer test-token");
     fetchMock.mockRestore();
   });
 

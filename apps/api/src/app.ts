@@ -15,6 +15,22 @@ import { ArchitectureOrchestrator } from "./services/architecture-orchestrator.j
 const mockSelection: ProviderSelection = { provider: "mock", model: "deterministic-local" };
 const coreDocumentFilenames: CoreDocumentFilename[] = ["README.md", "ARCHITECTURE.md", "API.md", "DATA_MODELS.md", "COMPONENTS.md", "DEVELOPMENT_PLAN.md", "TESTING_STRATEGY.md", "DEPLOYMENT.md", "TROUBLESHOOTING.md"];
 
+export type CompanionSecurityConfig = {
+  allowedOrigin: string;
+  token: string;
+  expiresAt: number;
+};
+
+export type BuildAppOptions = { companionSecurity?: CompanionSecurityConfig };
+
+function hasValidBearerToken(header: string | undefined, token: string): boolean {
+  const match = /^Bearer ([A-Za-z0-9_-]+)$/.exec(header ?? "");
+  if (!match || match[1].length !== token.length) return false;
+  let difference = 0;
+  for (let index = 0; index < token.length; index += 1) difference |= token.charCodeAt(index) ^ match[1].charCodeAt(index);
+  return difference === 0;
+}
+
 function workspaceFromRecords(blueprint: BlueprintWorkspace["blueprint"], records: ExecutionRecord[]): BlueprintWorkspace {
   const prd = records.find((record) => record.artifactType === "PRD" && record.status === "completed");
   const documents: WorkspaceDocument[] = [{
@@ -77,9 +93,28 @@ function invalidGenerationSelection(selection: ProviderSelection): boolean {
   return selection.provider === "openrouter";
 }
 
-export function buildApp(repository = new VaultRepository(process.env.VAULT_DATABASE_PATH ?? "apps/api/data/vault.db"), provider: AiProvider = createConfiguredProvider()): FastifyInstance {
+export function buildApp(repository = new VaultRepository(process.env.VAULT_DATABASE_PATH ?? "apps/api/data/vault.db"), provider: AiProvider = createConfiguredProvider(), options: BuildAppOptions = {}): FastifyInstance {
   const app = Fastify({ logger: true });
-  void app.register(cors, { origin: true });
+  const companionSecurity = options.companionSecurity;
+  void app.register(cors, companionSecurity ? {
+    origin: companionSecurity.allowedOrigin,
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["authorization", "content-type", "accept"],
+    credentials: false
+  } : { origin: true });
+  if (companionSecurity) {
+    app.addHook("onRequest", async (request, reply) => {
+      if (!request.url.startsWith("/api/")) return;
+      const origin = request.headers.origin;
+      if (origin !== companionSecurity.allowedOrigin) return reply.code(403).send({ error: "Forbidden origin" });
+      if (request.method === "OPTIONS") {
+        reply.header("Access-Control-Allow-Private-Network", "true");
+        return;
+      }
+      if (Date.now() >= companionSecurity.expiresAt) return reply.code(401).send({ error: "Pairing session expired" });
+      if (!hasValidBearerToken(request.headers.authorization, companionSecurity.token)) return reply.code(401).send({ error: "Unauthorized" });
+    });
+  }
   const executionService = new ExecutionService(repository, provider);
   const architectureOrchestrator = new ArchitectureOrchestrator();
   const architectureAnalyzer = new ArchitectureAnalyzer(architectureOrchestrator.registry);
@@ -132,6 +167,12 @@ export function buildApp(repository = new VaultRepository(process.env.VAULT_DATA
     const catalog = await ollama.catalog(configured);
     return { ...catalog, embeddingModels: [openRouterEmbeddings.catalogOption()] };
   });
+
+  app.get("/api/connection-info", async () => ({
+    contractVersion: 1,
+    authentication: companionSecurity ? "bearer-required" : "optional",
+    providers: { localOnly: Boolean(companionSecurity), embeddingAvailable: !companionSecurity && Boolean(process.env.OPENROUTER_API_KEY) }
+  }));
 
   app.post("/api/providers/embeddings/test", async (request, reply) => {
     const parsed = embeddingProbeSchema.safeParse(request.body);

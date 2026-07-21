@@ -11,6 +11,7 @@
     "build": "npm run build --workspace @the-vault/shared && npm run build --workspace @the-vault/prompts && npm run build --workspace @the-vault/api && npm run build --workspace @the-vault/web",
     "dev:api": "npm run dev --workspace @the-vault/api",
     "dev:web": "npm run dev --workspace @the-vault/web",
+    "package:companion": "npm run package:win --workspace @the-vault/companion",
     "seed:demo": "tsx apps/api/src/seed-demo.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -30,6 +31,8 @@
   },
   "allowScripts": {
     "better-sqlite3@11.10.0": true,
+    "electron@37.10.3": true,
+    "electron-winstaller@5.4.0": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.1": true
   },

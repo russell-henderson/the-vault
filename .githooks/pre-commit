@@ -1,0 +1,9 @@
+#!/bin/sh
+
+echo "Running pre-commit checks..."
+
+npm run typecheck || exit 1
+npm test || exit 1
+git diff --check --cached || exit 1
+
+echo "All checks passed successfully!"

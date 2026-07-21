@@ -169,6 +169,12 @@ Before direct code-writing or Codex workspace access, define allowed context, fi
 
 ## 9. Testing strategy
 
+### Runtime companion connection
+
+- A static Vercel client must show a connection screen without issuing API requests when unpaired.
+- Companion integration coverage must verify loopback binding, pairing-token expiry, exact origin enforcement, bearer protection of streams and disk sync, and offline recovery.
+- Custom endpoints must pass the versioned connection-info probe before activation.
+
 - Unit tests for extraction, classification, policy validation, packet rules, prompt generation, and state transitions.
 - Contract tests for provider normalization, catalog filtering, schema validation, and unavailable models.
 - Integration tests for SQLite persistence, approval flow, execution records, and verification.

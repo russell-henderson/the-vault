@@ -211,6 +211,10 @@ The packet is domain-neutral and can represent mobile physics, desktop UI, web A
 
 ## 9. Provider boundary
 
+### Local companion connection
+
+The production Vercel site is a static client with no configured API base URL. It resolves a paired loopback companion or a user-supplied Vault-compatible HTTPS endpoint at runtime. The Windows companion binds only to `127.0.0.1`, owns a local SQLite database, and grants a short-lived bearer session through a URL fragment that never reaches Vercel. In companion mode, every API route requires the exact production Origin and bearer token before route handling; this includes document streams and disk synchronization. See [ADR-002](adr/ADR-002-local-companion-connection.md).
+
 Current adapters are:
 
 - MockAiProvider: deterministic, offline, explicit fallback or configured mock.
@@ -225,7 +229,7 @@ The normal API path passes confirmedBrief and AuthorizedSynthesisContext for fin
 
 Provider configuration is environment-based. `AI_PROVIDER=ollama` selects the configured provider and `OLLAMA_BASE_URL` defaults to `http://localhost:11434`; `OLLAMA_API_KEY` is sent only when configured, enabling direct access to `https://ollama.com` from a hosted API. No analysis or creation model is silently selected. The deterministic mock remains available as an explicit catalog option for offline development. The UI requires an explicit analysis and creation model choice, while the API retains legacy configured/mock request compatibility. `OPENROUTER_API_KEY` enables the separate embedding evaluation route; the key stays on the API server and is never sent to the browser.
 
-Execution follows one bounded lifecycle: create a pending record, validate the provider, mark it running, generate or stream output, persist completed or failed evidence, and allow human verification. The streaming workspace closes each `EventSource` on completion, error, or unmount and commits only completed document buffers to the local workspace state.
+Execution follows one bounded lifecycle: create a pending record, validate the provider, mark it running, generate or stream output, persist completed or failed evidence, and allow human verification. The streaming workspace uses an abortable authenticated fetch stream, closes it on completion, error, or unmount, and commits only completed document buffers to the local workspace state.
 
 ## 10. Persistence and ownership
 

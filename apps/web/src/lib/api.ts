@@ -1,8 +1,10 @@
 import type { Blueprint, BlueprintInput, BlueprintProposal, BlueprintWorkspace, CoreDocumentFilename, DiscoveryResult, ExecutionRecord, PromptArtifact, ProviderCatalog, ProviderSelection, ProviderStatus } from "@the-vault/shared";
+import type { ConnectionInfo, ConnectionProfile } from "./connection";
 
 export type ExecutionDetails = ExecutionRecord & { prompt: string; evidence: { verificationNotes: string } };
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+let activeConnection: ConnectionProfile | undefined;
+export function setApiConnection(profile: ConnectionProfile | undefined): void { activeConnection = profile; }
 
 export type StreamHandlers = {
   onChunk: (chunk: string) => void;
@@ -18,13 +20,15 @@ export class ApiRequestError extends Error {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  if (!activeConnection) throw new ApiRequestError("Connect a local companion or custom API to continue.");
   const headers = new Headers(options?.headers);
   const hasBody = options?.body !== undefined && options.body !== null;
   if (hasBody && !headers.has("content-type")) headers.set("content-type", "application/json");
   headers.set("accept", "application/json");
+  if (activeConnection.token) headers.set("authorization", `Bearer ${activeConnection.token}`);
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    response = await fetch(`${activeConnection.baseUrl}${path}`, { ...options, headers });
   } catch {
     throw new ApiRequestError("Unable to reach the local API. Make sure the API server is running and try again.");
   }
@@ -43,6 +47,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getConnectionInfo: () => request<ConnectionInfo>("/api/connection-info"),
   listBlueprints: () => request<Blueprint[]>("/api/blueprints"),
   getProviderStatus: () => request<ProviderStatus>("/api/providers/status"),
   getProviderCatalog: () => request<ProviderCatalog>("/api/providers/models"),
@@ -64,34 +69,20 @@ export const api = {
     const params = new URLSearchParams({ filename });
     if (creation?.provider) params.set("provider", creation.provider);
     if (creation?.model) params.set("model", creation.model);
-    const source = new EventSource(`${API_BASE}/api/blueprints/${blueprintId}/generate/stream?${params.toString()}`);
-    let finished = false;
-    source.onmessage = (event) => {
+    const controller = new AbortController();
+    void (async () => {
       try {
-        const payload = JSON.parse(event.data) as { chunk?: unknown; status?: string; message?: string };
-        if (typeof payload.chunk === "string") handlers.onChunk(payload.chunk);
-        if (payload.status === "DONE") {
-          finished = true;
-          source.close();
-          handlers.onDone();
-        } else if (payload.status === "ERROR") {
-          finished = true;
-          source.close();
-          handlers.onError(typeof payload.message === "string" ? payload.message : "Document generation failed");
-        }
-      } catch {
-        finished = true;
-        source.close();
-        handlers.onError("The server returned an invalid streaming event");
-      }
-    };
-    source.onerror = () => {
-      if (finished) return;
-      finished = true;
-      source.close();
-      handlers.onError("The document stream disconnected before completion");
-    };
-    return source;
+        if (!activeConnection) throw new ApiRequestError("Connect a local companion or custom API to continue.");
+        const headers = new Headers({ accept: "text/event-stream" });
+        if (activeConnection.token) headers.set("authorization", `Bearer ${activeConnection.token}`);
+        const response = await fetch(`${activeConnection.baseUrl}/api/blueprints/${blueprintId}/generate/stream?${params.toString()}`, { headers, signal: controller.signal });
+        if (!response.ok || !response.body) throw new ApiRequestError("The document stream could not be opened.", response.status);
+        const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
+        for (;;) { const next = await reader.read(); if (next.done) break; buffer += decoder.decode(next.value, { stream: true }); const frames = buffer.split("\n\n"); buffer = frames.pop() ?? ""; for (const frame of frames) { const data = frame.split("\n").find((line) => line.startsWith("data: "))?.slice(6); if (!data) continue; const payload = JSON.parse(data) as { chunk?: unknown; status?: string; message?: string }; if (typeof payload.chunk === "string") handlers.onChunk(payload.chunk); if (payload.status === "DONE") { handlers.onDone(); return; } if (payload.status === "ERROR") { handlers.onError(typeof payload.message === "string" ? payload.message : "Document generation failed"); return; } } }
+        handlers.onError("The document stream disconnected before completion");
+      } catch (error) { if (!controller.signal.aborted) handlers.onError(error instanceof Error ? error.message : "The document stream failed"); }
+    })();
+    return { close: () => controller.abort() };
   },
   extrapolate: (description: string, model?: string) => request<{ projectName: string; architectureOverview: string; coreLogic: string; dependencies: string[]; technicalConstraints: string[]; comments: string[] }>("/api/blueprints/extrapolate", { method: "POST", body: JSON.stringify({ description, model }) }),
   patchBlueprint: (id: string, updates: { projectName?: string; tags?: string[] }) => request<Blueprint>(`/api/blueprints/${id}`, { method: "PATCH", body: JSON.stringify(updates) }),

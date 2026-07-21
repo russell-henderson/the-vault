@@ -95,6 +95,26 @@ OLLAMA_BASE_URL=http://localhost:11434
 
 The dashboard reports provider health and requires an explicit model choice for each generation role. Refresh the catalog after pulling or enabling a model in Ollama. Cloud-tagged Ollama models are shown with a cloud label and can be selected. For a Vercel-hosted API, set `OLLAMA_BASE_URL=https://ollama.com` and the server-side `OLLAMA_API_KEY`; a local API can continue using `http://localhost:11434` with Ollama sign-in handling cloud access. If `OPENROUTER_API_KEY` is configured, the dashboard also exposes the multimodal embedding model `nvidia/llama-nemotron-embed-vl-1b-v2:free` as a separate evaluation choice.
 
+## Connecting Your Local API or Companion
+
+The hosted workspace at `https://the-vault-dusky.vercel.app` is a static client. It does not host your SQLite data, local API, or Ollama service. Open the site and choose a connection before creating blueprints.
+
+### Local Companion (Recommended)
+
+1. Download and run the signed **Vault Companion for Windows** installer from the [project releases](https://github.com/russell-henderson/the-vault/releases).
+2. Start Vault Companion, then click **Connect Local Companion** on the hosted site's connection screen. The companion opens a one-time pairing link automatically.
+3. For local models, start Ollama and pull a model as usual. The companion connects only to `http://localhost:11434` and offers the deterministic mock when Ollama is unavailable.
+
+The companion binds only to your loopback interface and stores its database at `%LOCALAPPDATA%\The Vault Architect\vault.db`. Blueprint records, generated documents, and local-model prompts do not pass through Vercel or a cloud provider.
+
+### Custom API Endpoint
+
+Advanced users can select **Use Custom API** on the connection screen and enter a Vault-compatible HTTPS backend URL, plus an optional bearer token. The endpoint must implement the Vault API contract (including `GET /api/connection-info`) and allow the production origin `https://the-vault-dusky.vercel.app` with its own CORS and authentication policy. Endpoint preferences may be remembered; bearer tokens are retained only for the open browser tab.
+
+### Browser permission troubleshooting
+
+Chromium browsers may show a **Local Network Access** permission prompt when the secure Vercel site connects to `127.0.0.1`. Allow the prompt to pair with Vault Companion. If the connection later fails, reopen Vault Companion and pair again; pairing tokens are short-lived and are cleared when the browser tab closes. If Ollama is offline, start `ollama serve` or choose the deterministic mock.
+
 ## Product walkthrough
 
 1. Select **Start with a brief** and describe the intended outcome and constraints.

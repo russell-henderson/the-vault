@@ -1,0 +1,26 @@
+{
+  "name": "@the-vault/companion",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/main.mjs",
+  "scripts": {
+    "dev": "electron .",
+    "package:win": "npm run build --workspace @the-vault/api && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "@the-vault/api": "1.0.0",
+    "electron": "^37.4.0"
+  },
+  "devDependencies": {
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.thevaultarchitect.companion",
+    "productName": "Vault Companion",
+    "asar": true,
+    "win": { "target": ["nsis"] },
+    "nsis": { "oneClick": true, "perMachine": false },
+    "files": ["src/**", "package.json", "../api/dist/**", "../../packages/shared/dist/**", "../../packages/prompts/dist/**"]
+  }
+}
