@@ -336,9 +336,9 @@ export function Dashboard({ blueprints, providerStatus, loading, error, onNaviga
       ) : localBlueprints.length === 0 ? (
         <div className="empty-panel min-h-[360px] flex-col justify-center text-center">
           <span className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-cyan-400/10 text-2xl text-cyan-300">✦</span>
-          <h2 className="text-xl font-semibold text-white">Your architecture vault is empty</h2>
-          <p className="mt-2 max-w-md text-sm text-slate-400">Start with a brief and let the local model shape the first reviewable blueprint.</p>
-          <button className="button-primary mt-6" onClick={() => onNavigate("/blueprints/new")}>Create your first blueprint</button>
+          <h2 className="text-xl font-semibold text-white">Set up your local Vault</h2>
+          <p className="mt-2 max-w-md text-sm text-slate-400">Your Vault database is ready. Start with a brief to create the first saved, reviewable blueprint on this device.</p>
+          <button className="button-primary mt-6" onClick={() => onNavigate("/blueprints/new")}>Create your first saved blueprint</button>
         </div>
       ) : (
         <section className="space-y-6">

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
   "dependencies": { "@the-vault/shared": "1.0.0" },
   "scripts": { "build": "tsc -p tsconfig.json" }
 }

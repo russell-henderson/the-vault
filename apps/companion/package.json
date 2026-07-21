@@ -1,6 +1,6 @@
 {
   "name": "@the-vault/companion",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Local Windows companion for The Vault Architect",
   "author": "The Vault Architect",
   "private": true,

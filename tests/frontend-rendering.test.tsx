@@ -13,8 +13,8 @@ import { normalizeTag } from "@the-vault/shared";
 describe("primary frontend workflow states", () => {
   it("renders the empty dashboard state and create action", () => {
     const html = renderToStaticMarkup(<Dashboard blueprints={[]} loading={false} onNavigate={() => undefined} />);
-    expect(html).toContain("Your architecture vault is empty");
-    expect(html).toContain("Create your first blueprint");
+    expect(html).toContain("Set up your local Vault");
+    expect(html).toContain("Create your first saved blueprint");
     expect(html).toContain("THE VAULT ARCHITECT");
     expect(html).toContain("[ LOCAL WORKSPACE ]");
   });

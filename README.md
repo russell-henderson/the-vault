@@ -101,10 +101,10 @@ The hosted workspace at `https://the-vault-dusky.vercel.app` is a static client.
 
 ### Local Companion (Recommended)
 
-1. Download the latest **Vault Companion for Windows** installer from the [project releases](https://github.com/russell-henderson/the-vault/releases). Use `Vault Companion Setup 1.0.1.exe` or newer; the prior `1.0.0` preview was headless and should not be used. Preview installers may be unsigned and should be published as pre-releases until Windows code signing is configured.
+1. Download the latest **Vault Companion for Windows** installer from the [project releases](https://github.com/russell-henderson/the-vault/releases). Use `Vault Companion Setup 1.0.3.exe` or newer; do not use `1.0.0`–`1.0.2` preview installers. Preview installers may be unsigned and should be published as pre-releases until Windows code signing is configured.
 2. Run the installer, then open **Vault Companion** from the Windows Start menu. It opens a visible desktop window containing the same saved Vault workspace as the hosted site, paired to its own local API and database.
 3. You can also select **Connect Local Companion** on the hosted connection screen. Windows opens the installed companion through `vault-companion://open`; approve the browser/Windows protocol prompt if shown. Keep the companion window open while using its saved workspace.
-4. For local models, start Ollama and pull a model as usual. The companion connects only to `http://localhost:11434` and offers the deterministic mock when Ollama is unavailable.
+4. The first time the companion opens, its empty Vault screen confirms the local database is ready and prompts you to create the first saved blueprint. For local models, start Ollama and pull a model as usual. The companion connects only to `http://localhost:11434` and offers the deterministic mock when Ollama is unavailable.
 
 The companion binds only to your loopback interface and stores its database at `%LOCALAPPDATA%\The Vault Architect\vault.db`. Blueprint records, generated documents, and local-model prompts do not pass through Vercel or a cloud provider.
 

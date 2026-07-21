@@ -1,8 +1,14 @@
 import { app, BrowserWindow, dialog } from "electron";
 import path from "node:path";
+import { appendFile, mkdir } from "node:fs/promises";
 
 let activeCompanion;
 let companionWindow;
+
+function vaultDirectory() {
+  const localAppData = process.env.LOCALAPPDATA?.trim();
+  return path.join(localAppData || app.getPath("appData"), "The Vault Architect");
+}
 
 function ensureCompanionWindow() {
   if (companionWindow && !companionWindow.isDestroyed()) return companionWindow;
@@ -29,9 +35,11 @@ function showCompanionWindow() {
 async function openPairingSession() {
   const window = showCompanionWindow();
   if (activeCompanion) await activeCompanion.close();
+  const dataDirectory = vaultDirectory();
+  await mkdir(dataDirectory, { recursive: true });
   const { startCompanion } = await import("@the-vault/api/dist/companion-server.js");
   activeCompanion = await startCompanion({
-    databasePath: path.join(app.getPath("userData"), "vault.db"),
+    databasePath: path.join(dataDirectory, "vault.db"),
     // The paired Vercel workspace runs inside the installed app. The URL fragment
     // keeps the endpoint and bearer token out of the Vercel request itself.
     openBrowser: (url) => {
@@ -48,7 +56,10 @@ function isProtocolInvocation(values) { return values.some((value) => value === 
 function startOrShowCompanion() {
   void openPairingSession().catch((error) => {
     console.error("Unable to start Vault Companion", error);
-    dialog.showErrorBox("Vault Companion could not start", "The local Vault service could not start. Close the app and try again.");
+    const details = error instanceof Error ? error.message : "Unknown local service error.";
+    const logPath = path.join(vaultDirectory(), "companion.log");
+    void appendFile(logPath, `[${new Date().toISOString()}] ${error instanceof Error && error.stack ? error.stack : details}\n`).catch(() => undefined);
+    dialog.showErrorBox("Vault Companion could not start", `The local Vault service could not start: ${details}\n\nDiagnostic log: ${logPath}`);
   });
 }
 
