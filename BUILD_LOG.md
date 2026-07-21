@@ -414,3 +414,10 @@ For each meaningful milestone, record the date, model used, repository state, ma
 - **Packaging correction:** A launch test found that Electron does not expose a `localAppData` path key. The companion now resolves Windows `%LOCALAPPDATA%` through `process.env.LOCALAPPDATA`, with Electron's app-data location as a fallback.
 - **Verification:** The original `1.0.1` packaged startup failure was reproduced as Electron rejecting TypeScript entry points under `node_modules`; the compiled-entry-point repair resolves that cause. `npm run typecheck`, `npm test` (20 files, 96 tests), `npm run build`, `git diff --check`, and `npm run package:companion` passed. This runner's Application Control policy blocked a final unsigned unpacked-EXE launch, so the `1.0.3` installer still requires a user-machine smoke test before a non-preview release.
 - **Release action:** Publish `Vault Companion Setup 1.0.3.exe` as a new pre-release asset after a user-machine smoke test. Do not direct users to `1.0.0`–`1.0.2`.
+
+## 2026-07-21 — Native SQLite ABI packaging repair
+
+- **Diagnosis:** The `1.0.3` installer contained `better-sqlite3` built for the local Node 26 ABI (`147`) while Electron 37 requires ABI `136`, causing an immediate companion startup failure.
+- **Implementation:** The Windows packaging script now force-rebuilds `better-sqlite3` explicitly for Electron `37.10.3` before packaging. Electron Builder native rebuilding is disabled afterward, preventing it from replacing that binary with the Node-built version.
+- **Verification:** `npm run package:companion` completed with Electron Builder reporting native rebuild skipped after the explicit Electron rebuild. ABI inspection of the packaged `better_sqlite3.node` reports `NODE_MODULE_VERSION 136`, which is the Electron 37 requirement (the broken installer reported `147`).
+- **Release action:** Publish `Vault Companion Setup 1.0.4.exe` as a new pre-release asset. Do not direct users to `1.0.0`–`1.0.3`.

@@ -1,6 +1,6 @@
 {
   "name": "@the-vault/companion",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Local Windows companion for The Vault Architect",
   "author": "The Vault Architect",
   "private": true,
@@ -8,7 +8,7 @@
   "main": "src/main.mjs",
   "scripts": {
     "dev": "electron .",
-    "package:win": "npm run build --workspace @the-vault/api && electron-builder --win nsis"
+    "package:win": "npm run build --workspace @the-vault/api && electron-rebuild --version 37.10.3 --module-dir ../.. --force --only better-sqlite3 && electron-builder --win nsis"
   },
   "dependencies": {
     "@the-vault/api": "1.0.0"
@@ -21,6 +21,7 @@
     "appId": "com.thevaultarchitect.companion",
     "productName": "Vault Companion",
     "asar": true,
+    "npmRebuild": false,
     "win": { "target": ["nsis"] },
     "nsis": { "oneClick": true, "perMachine": false },
     "files": ["src/**", "package.json", "../api/dist/**", "../../packages/shared/dist/**", "../../packages/prompts/dist/**"],
