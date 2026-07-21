@@ -2,6 +2,7 @@
   "name": "the-vault-architect",
   "private": true,
   "version": "1.0.0",
+  "license": "MIT",
   "description": "AI-native architecture workflow foundation",
   "workspaces": [
     "apps/*",
