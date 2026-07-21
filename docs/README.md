@@ -2,6 +2,10 @@
 
 **Status:** Canonical documentation index
 **Core release:** `v1.0.0` · **Windows Companion:** `v1.0.4` pre-release (user-machine smoke tested; unsigned)
+
+## Current distribution status
+
+The supported Windows download is the `v1.0.4` Companion pre-release. It includes the Electron-compatible SQLite native module, a visible paired workspace, a local Vault database, protocol pairing, and catalog-backed Local Ollama selection. Keep it pre-release until the installer is Authenticode-signed and validated on additional clean Windows machines. Historical `v1.0.0`–`v1.0.3` installers must not be distributed.
 **Last reviewed:** 2026-07-18
 
 This directory contains durable product documentation, accepted decisions, submission material, and historical verification evidence. Current source code and executable tests remain the implementation authority.

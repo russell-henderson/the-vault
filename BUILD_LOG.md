@@ -426,3 +426,4 @@ For each meaningful milestone, record the date, model used, repository state, ma
 
 - **Human verification:** The user installed and exercised `Vault Companion Setup 1.0.4.exe`; local companion pairing and saved workflow behavior worked correctly.
 - **Release decision:** `1.0.4` is the functional Windows Companion baseline. Keep it as a pre-release because the installer is unsigned and has not yet completed broader clean-machine validation. Promote a later signed build to a full release after that validation.
+- **Documentation synchronization:** README, architecture, ADR, development plan, demo, submission notes, and documentation index identify `v1.0.4` as the supported pre-release and mark `v1.0.0`–`v1.0.3` installers as superseded.

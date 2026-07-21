@@ -44,7 +44,7 @@ Use AI_PROVIDER=ollama for the configured Ollama path. If Ollama is unavailable,
 
 For the production site, open `https://the-vault-dusky.vercel.app`. Without a saved connection it opens Ephemeral Mode. Choose Local Ollama or OpenRouter, generate an architecture, select supporting documents, and download the ZIP. Explain that this path has no Vault API, SQLite record, history, or disk synchronization; all results disappear on refresh. For OpenRouter, OAuth is preferred, while an existing key and a model ID such as `openrouter/auto` are tab-only fallbacks. Select **Saved API / Companion mode** to demonstrate the durable workflow below.
 
-For the Windows companion demo, use `Vault Companion Setup 1.0.4.exe` or newer. On first launch, confirm the empty local Vault setup screen, then create a saved blueprint and verify it survives reopening the companion. The current installer is an unsigned pre-release despite this smoke-tested workflow.
+For the Windows companion demo, use the current `v1.0.4` pre-release asset, `Vault Companion Setup 1.0.4.exe`; do not use the superseded `1.0.0`–`1.0.3` installers. On first launch, confirm the empty local Vault setup screen, then create a saved blueprint and verify it survives reopening the companion. The current installer is an unsigned pre-release despite this smoke-tested workflow.
 
 ### 0:00–0:25 — Establish the problem
 

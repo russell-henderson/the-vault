@@ -2,7 +2,7 @@
 
 **Release:** `v1.0.0`
 
-**Windows Companion:** `v1.0.4` is the verified functional baseline. It remains an unsigned pre-release pending Windows code signing and broader clean-machine validation.
+**Windows Companion:** `v1.0.4` is the supported, verified functional pre-release baseline. Its installer, pairing, local database, and saved workflow have passed a user-machine smoke test. It remains unsigned pending Windows code signing and broader clean-machine validation; `v1.0.0`–`v1.0.3` installers are superseded.
 **Category:** Developer Tools
 **Secondary category:** Work & Productivity
 

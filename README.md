@@ -99,6 +99,8 @@ The dashboard reports provider health and requires an explicit model choice for 
 
 The hosted workspace at `https://the-vault-dusky.vercel.app` is a static client. It does not host your SQLite data, local API, or Ollama service. Unpaired visitors start in Ephemeral Mode; choose **Saved API / Companion mode** when you want durable blueprints, history, or disk synchronization.
 
+> **Current companion release:** [Vault Companion `v1.0.4` pre-release](https://github.com/russell-henderson/the-vault/releases) is the supported Windows download. It has passed a user-machine install, pairing, local database, and saved-workflow smoke test. It remains a pre-release because the installer is not yet Authenticode-signed.
+
 ### Local Companion (Recommended)
 
 1. Download the latest **Vault Companion for Windows** installer from the [project releases](https://github.com/russell-henderson/the-vault/releases). Use `Vault Companion Setup 1.0.4.exe` or newer; do not use `1.0.0`–`1.0.3` preview installers. Version `1.0.4` passed a user-machine smoke test, but it remains unsigned and is published as a pre-release until Windows code signing and broader clean-machine validation are complete.
