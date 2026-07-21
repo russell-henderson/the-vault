@@ -393,3 +393,9 @@ For each meaningful milestone, record the date, model used, repository state, ma
 - **Decision:** Document the hosted application as two intentional workflows: default browser-only Ephemeral Mode and opt-in Saved API / Companion mode.
 - **Documentation:** Added the architecture-to-documents-to-ZIP user flow, existing OpenRouter key and manual model-ID fallback, hosted demo path, persistence boundaries, and developer rationale across the README, architecture record, ADR, development plan, demo script, and submission notes.
 - **Release state:** The verified companion and ephemeral workspace commits, plus the Vercel Speed Insights workspace dependency repair, were pushed to `origin/main` for the hosted deployment. No user credentials are committed or stored by the app.
+
+## 2026-07-21 — Windows companion installer packaging
+
+- **Packaging fix:** Electron was moved to companion development dependencies, pinned to `37.10.3`, and companion package metadata was added so Electron Builder can resolve a deterministic Windows target.
+- **Artifact:** `npm run package:companion` completed successfully and produced `apps/companion/dist/Vault Companion Setup 1.0.0.exe` plus its blockmap.
+- **Release guidance:** The installer is currently not Authenticode-signed and must be released as a pre-release until a Windows code-signing certificate and signing configuration are added.

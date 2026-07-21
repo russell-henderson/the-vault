@@ -1,6 +1,8 @@
 {
   "name": "@the-vault/companion",
   "version": "1.0.0",
+  "description": "Local Windows companion for The Vault Architect",
+  "author": "The Vault Architect",
   "private": true,
   "type": "module",
   "main": "src/main.mjs",
@@ -9,10 +11,10 @@
     "package:win": "npm run build --workspace @the-vault/api && electron-builder --win nsis"
   },
   "dependencies": {
-    "@the-vault/api": "1.0.0",
-    "electron": "^37.4.0"
+    "@the-vault/api": "1.0.0"
   },
   "devDependencies": {
+    "electron": "37.10.3",
     "electron-builder": "^26.0.12"
   },
   "build": {

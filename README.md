@@ -101,7 +101,7 @@ The hosted workspace at `https://the-vault-dusky.vercel.app` is a static client.
 
 ### Local Companion (Recommended)
 
-1. Download and run the signed **Vault Companion for Windows** installer from the [project releases](https://github.com/russell-henderson/the-vault/releases).
+1. Download and run the **Vault Companion for Windows** installer from the [project releases](https://github.com/russell-henderson/the-vault/releases). Preview installers may be unsigned and should be published as pre-releases until Windows code signing is configured.
 2. Start Vault Companion, then click **Connect Local Companion** on the hosted site's connection screen. The companion opens a one-time pairing link automatically.
 3. For local models, start Ollama and pull a model as usual. The companion connects only to `http://localhost:11434` and offers the deterministic mock when Ollama is unavailable.
 
