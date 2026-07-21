@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { BlueprintInput, ProviderCatalog, ProviderStatus } from "@the-vault/shared";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Analytics } from "@vercel/analytics/react";
 import { Layout } from "./components/Layout";
 import { api } from "./lib/api";
 import { Dashboard } from "./pages/Dashboard";
@@ -34,6 +35,7 @@ function ConnectedApp() {
     <>
       <Layout providerStatus={providerStatus} catalog={catalog} onNavigate={navigate}>{content}</Layout>
       <SpeedInsights />
+      <Analytics />
     </>
   );
 }
