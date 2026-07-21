@@ -172,10 +172,10 @@ Before direct code-writing or Codex workspace access, define allowed context, fi
 ### Runtime companion connection
 
 - A static Vercel client must show a connection screen without issuing API requests when unpaired.
-- Companion integration coverage must verify loopback binding, pairing-token expiry, exact origin enforcement, bearer protection of streams and disk sync, and offline recovery.
+- Companion integration coverage must verify loopback binding, pairing-token expiry, exact origin enforcement, bearer protection of streams and disk sync, offline recovery, Windows protocol registration, and that the installed app presents a visible paired workspace backed by its local database.
 - Custom endpoints must pass the versioned connection-info probe before activation.
 - The default unpaired view is an ephemeral browser workspace. It must retain provider credentials and generated content only in memory, avoid all Vault API and persistence calls, and clearly direct users to Saved API / Companion mode for durable work.
-- Local Ollama onboarding must explain exact-origin CORS configuration and Chromium Local Network Access. OpenRouter supports OAuth PKCE with a temporary session-storage verifier and an explicit existing-key fallback that is held only in memory; catalog failure may fall back to a user-entered model ID.
+- Local Ollama onboarding must explain exact-origin CORS configuration and Chromium Local Network Access, retry the full local catalog, and permit a user-entered installed model ID if browser discovery is blocked. OpenRouter supports OAuth PKCE with a temporary session-storage verifier and an explicit existing-key fallback that is held only in memory; its catalog failure may fall back to a user-entered model ID.
 - Ephemeral generation must carry the architecture into selected document generation and Markdown/ZIP export without creating a blueprint, execution record, or disk-sync request.
 
 - Unit tests for extraction, classification, policy validation, packet rules, prompt generation, and state transitions.

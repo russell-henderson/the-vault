@@ -399,3 +399,10 @@ For each meaningful milestone, record the date, model used, repository state, ma
 - **Packaging fix:** Electron was moved to companion development dependencies, pinned to `37.10.3`, and companion package metadata was added so Electron Builder can resolve a deterministic Windows target.
 - **Artifact:** `npm run package:companion` completed successfully and produced `apps/companion/dist/Vault Companion Setup 1.0.0.exe` plus its blockmap.
 - **Release guidance:** The installer is currently not Authenticode-signed and must be released as a pre-release until a Windows code-signing certificate and signing configuration are added.
+
+## 2026-07-21 — Visible Windows companion and resilient local Ollama selection
+
+- **Diagnosis:** The `1.0.0` installer started a headless Electron process and relied on runtime protocol registration, so a newly installed user could not see a companion workspace or reliably invoke it from the hosted connection screen. Direct browser Ollama catalog discovery could also be blocked by Chromium loopback/CORS controls, leaving the model selector disabled.
+- **Implementation:** The companion now opens the paired hosted saved workspace in a visible Electron window, keeps its local Fastify/SQLite service alive for that window, and registers `vault-companion://open` through the Windows installer. The fixed installer version is `1.0.1`. Ephemeral Local Ollama now retries discovery, displays every returned local model, and permits a manual installed-model ID when browser catalog discovery is blocked. OpenRouter OAuth and memory-only existing-key behavior are unchanged.
+- **Verification:** `npm run typecheck`, `npm test` (20 files, 96 tests), `npm run build`, `git diff --check`, and `npm run package:companion` all passed. The packaged artifact is `apps/companion/dist/Vault Companion Setup 1.0.1.exe`.
+- **Release action:** Publish `Vault Companion Setup 1.0.1.exe` as a new pre-release asset; do not direct users to the broken `1.0.0` asset.

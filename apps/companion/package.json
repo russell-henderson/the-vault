@@ -1,6 +1,6 @@
 {
   "name": "@the-vault/companion",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Local Windows companion for The Vault Architect",
   "author": "The Vault Architect",
   "private": true,
@@ -23,6 +23,7 @@
     "asar": true,
     "win": { "target": ["nsis"] },
     "nsis": { "oneClick": true, "perMachine": false },
-    "files": ["src/**", "package.json", "../api/dist/**", "../../packages/shared/dist/**", "../../packages/prompts/dist/**"]
+    "files": ["src/**", "package.json", "../api/dist/**", "../../packages/shared/dist/**", "../../packages/prompts/dist/**"],
+    "protocols": [{ "name": "Vault Companion", "schemes": ["vault-companion"] }]
   }
 }

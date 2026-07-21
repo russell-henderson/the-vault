@@ -16,9 +16,9 @@ describe("ephemeral browser providers", () => {
   });
 
   it("discovers Ollama models without a Vault API request", async () => {
-    const fetchStub = vi.fn().mockResolvedValue(new Response(JSON.stringify({ models: [{ name: "llama3.2:3b" }] }), { status: 200 }));
+    const fetchStub = vi.fn().mockResolvedValue(new Response(JSON.stringify({ models: [{ name: "llama3.2:3b" }, { name: "qwen3:8b" }] }), { status: 200 }));
     vi.stubGlobal("fetch", fetchStub);
-    await expect(ollamaAdapter.getAvailableModels()).resolves.toEqual([{ id: "llama3.2:3b", label: "llama3.2:3b" }]);
+    await expect(ollamaAdapter.getAvailableModels()).resolves.toEqual([{ id: "llama3.2:3b", label: "llama3.2:3b" }, { id: "qwen3:8b", label: "qwen3:8b" }]);
     expect(fetchStub).toHaveBeenCalledWith("http://127.0.0.1:11434/api/tags");
     vi.unstubAllGlobals();
   });

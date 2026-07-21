@@ -101,9 +101,10 @@ The hosted workspace at `https://the-vault-dusky.vercel.app` is a static client.
 
 ### Local Companion (Recommended)
 
-1. Download and run the **Vault Companion for Windows** installer from the [project releases](https://github.com/russell-henderson/the-vault/releases). Preview installers may be unsigned and should be published as pre-releases until Windows code signing is configured.
-2. Start Vault Companion, then click **Connect Local Companion** on the hosted site's connection screen. The companion opens a one-time pairing link automatically.
-3. For local models, start Ollama and pull a model as usual. The companion connects only to `http://localhost:11434` and offers the deterministic mock when Ollama is unavailable.
+1. Download the latest **Vault Companion for Windows** installer from the [project releases](https://github.com/russell-henderson/the-vault/releases). Use `Vault Companion Setup 1.0.1.exe` or newer; the prior `1.0.0` preview was headless and should not be used. Preview installers may be unsigned and should be published as pre-releases until Windows code signing is configured.
+2. Run the installer, then open **Vault Companion** from the Windows Start menu. It opens a visible desktop window containing the same saved Vault workspace as the hosted site, paired to its own local API and database.
+3. You can also select **Connect Local Companion** on the hosted connection screen. Windows opens the installed companion through `vault-companion://open`; approve the browser/Windows protocol prompt if shown. Keep the companion window open while using its saved workspace.
+4. For local models, start Ollama and pull a model as usual. The companion connects only to `http://localhost:11434` and offers the deterministic mock when Ollama is unavailable.
 
 The companion binds only to your loopback interface and stores its database at `%LOCALAPPDATA%\The Vault Architect\vault.db`. Blueprint records, generated documents, and local-model prompts do not pass through Vercel or a cloud provider.
 
@@ -124,7 +125,7 @@ Visitors who have not paired an API start in **Ephemeral Mode**. This browser-on
 3. Select the implementation documents you need, then choose **Generate selected documents**. Each document uses the generated architecture as context.
 4. Download `ARCHITECTURE.md` directly or choose **Download workspace ZIP** before leaving the page.
 
-Choose **Local Ollama** to use a model already running at `http://127.0.0.1:11434`; no model token is needed. A hosted secure page may need permission to reach loopback. If Chromium reports a blocked connection, restart Ollama with the production origin allowed:
+Choose **Local Ollama** to use any model already running at `http://127.0.0.1:11434`; no model token is needed. The picker loads every model returned by `ollama list`, and **Retry local models** reloads the catalog after you start Ollama or grant permission. A hosted secure page may need permission to reach loopback. If Chromium reports a blocked connection, restart Ollama with the production origin allowed:
 
 ```bash
 OLLAMA_ORIGINS="https://the-vault-dusky.vercel.app" ollama serve
@@ -137,7 +138,7 @@ $env:OLLAMA_ORIGINS="https://the-vault-dusky.vercel.app"
 ollama serve
 ```
 
-Allow the Chromium **Local Network Access** prompt. `OLLAMA_ORIGINS="*"` is suitable only for temporary local troubleshooting, not normal use.
+Allow the Chromium **Local Network Access** prompt. If the catalog remains blocked, enter any installed model ID (for example `llama3.2:3b`) in **Local Ollama model ID**; direct generation can then proceed once the browser is permitted to reach Ollama. `OLLAMA_ORIGINS="*"` is suitable only for temporary local troubleshooting, not normal use.
 
 Choose **OpenRouter** to authorize through its OAuth page. The PKCE verifier lives in `sessionStorage` only while the browser redirects; the returned session key remains only in page memory and is lost on refresh. If OAuth is unavailable in a browser, users may instead paste an existing OpenRouter API key; it is used only in memory for that tab and is never written to browser storage. If model discovery cannot load, enter a model ID such as `openrouter/auto` in the **OpenRouter model ID** field. Select **Saved API / Companion mode** whenever you need blueprints, history, or local disk synchronization.
 
