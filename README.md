@@ -101,7 +101,7 @@ The hosted workspace at `https://the-vault-dusky.vercel.app` is a static client.
 
 ### Local Companion (Recommended)
 
-1. Download the latest **Vault Companion for Windows** installer from the [project releases](https://github.com/russell-henderson/the-vault/releases). Use `Vault Companion Setup 1.0.4.exe` or newer; do not use `1.0.0`–`1.0.3` preview installers. Preview installers may be unsigned and should be published as pre-releases until Windows code signing is configured.
+1. Download the latest **Vault Companion for Windows** installer from the [project releases](https://github.com/russell-henderson/the-vault/releases). Use `Vault Companion Setup 1.0.4.exe` or newer; do not use `1.0.0`–`1.0.3` preview installers. Version `1.0.4` passed a user-machine smoke test, but it remains unsigned and is published as a pre-release until Windows code signing and broader clean-machine validation are complete.
 2. Run the installer, then open **Vault Companion** from the Windows Start menu. It opens a visible desktop window containing the same saved Vault workspace as the hosted site, paired to its own local API and database.
 3. You can also select **Connect Local Companion** on the hosted connection screen. Windows opens the installed companion through `vault-companion://open`; approve the browser/Windows protocol prompt if shown. Keep the companion window open while using its saved workspace.
 4. The first time the companion opens, its empty Vault screen confirms the local database is ready and prompts you to create the first saved blueprint. For local models, start Ollama and pull a model as usual. The companion connects only to `http://localhost:11434` and offers the deterministic mock when Ollama is unavailable.
@@ -138,7 +138,7 @@ $env:OLLAMA_ORIGINS="https://the-vault-dusky.vercel.app"
 ollama serve
 ```
 
-Allow the Chromium **Local Network Access** prompt. If the catalog remains blocked, enter any installed model ID (for example `llama3.2:3b`) in **Local Ollama model ID**; direct generation can then proceed once the browser is permitted to reach Ollama. `OLLAMA_ORIGINS="*"` is suitable only for temporary local troubleshooting, not normal use.
+Allow the Chromium **Local Network Access** prompt. If the catalog remains blocked, enter any installed model ID (for example `llama3.2:3b`) in the editable **Local Ollama model** field; direct generation can then proceed once the browser is permitted to reach Ollama. `OLLAMA_ORIGINS="*"` is suitable only for temporary local troubleshooting, not normal use.
 
 Choose **OpenRouter** to authorize through its OAuth page. The PKCE verifier lives in `sessionStorage` only while the browser redirects; the returned session key remains only in page memory and is lost on refresh. If OAuth is unavailable in a browser, users may instead paste an existing OpenRouter API key; it is used only in memory for that tab and is never written to browser storage. If model discovery cannot load, enter a model ID such as `openrouter/auto` in the **OpenRouter model ID** field. Select **Saved API / Companion mode** whenever you need blueprints, history, or local disk synchronization.
 
@@ -200,4 +200,4 @@ The full suite, including database-backed checks, passes in the current workspac
 
 ## Release
 
-The current local release is `v1.0.0`, merged into local `main`. Remote push and pull-request publication remain intentionally separate actions.
+The core application release is `v1.0.0`. The separately packaged Windows Companion baseline is `v1.0.4`, verified on a user machine and intentionally kept as an unsigned pre-release pending code signing and broader clean-machine validation.

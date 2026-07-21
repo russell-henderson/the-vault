@@ -217,6 +217,8 @@ The packet is domain-neutral and can represent mobile physics, desktop UI, web A
 
 The production Vercel site is a static client with no configured API base URL. It resolves a paired loopback companion or a user-supplied Vault-compatible HTTPS endpoint at runtime. The Windows companion binds only to `127.0.0.1`, owns a local SQLite database, and grants a short-lived bearer session through a URL fragment that never reaches Vercel. In companion mode, every API route requires the exact production Origin and bearer token before route handling; this includes document streams and disk synchronization. See [ADR-002](adr/ADR-002-local-companion-connection.md).
 
+The Windows Companion `1.0.4` packaging baseline rebuilds `better-sqlite3` for Electron 37's ABI before creating the NSIS installer; it has passed a user-machine smoke test. It remains an unsigned pre-release until a code-signing certificate and clean-machine release validation are available.
+
 When no saved connection is active, the web client defaults to a browser-only ephemeral mode. Its Ollama and OpenRouter adapters stream directly from the selected provider and never invoke Vault API routes. Generated architecture and selected document output can be exported but are memory-only. The Ollama picker displays every locally returned model, can be retried after a browser permission change, and permits a user-entered installed model ID if catalog discovery is blocked. OpenRouter supports OAuth/PKCE or a user-supplied existing key held only in React memory; when catalog discovery is unavailable, a manual model ID may be used. The PKCE verifier is stored in session storage only for the OAuth redirect and is removed at callback.
 
 Current adapters are:

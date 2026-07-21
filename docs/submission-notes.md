@@ -1,6 +1,8 @@
 # The Vault Architect — Submission Notes
 
 **Release:** `v1.0.0`
+
+**Windows Companion:** `v1.0.4` is the verified functional baseline. It remains an unsigned pre-release pending Windows code signing and broader clean-machine validation.
 **Category:** Developer Tools
 **Secondary category:** Work & Productivity
 

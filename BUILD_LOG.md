@@ -421,3 +421,8 @@ For each meaningful milestone, record the date, model used, repository state, ma
 - **Implementation:** The Windows packaging script now force-rebuilds `better-sqlite3` explicitly for Electron `37.10.3` before packaging. Electron Builder native rebuilding is disabled afterward, preventing it from replacing that binary with the Node-built version.
 - **Verification:** `npm run package:companion` completed with Electron Builder reporting native rebuild skipped after the explicit Electron rebuild. ABI inspection of the packaged `better_sqlite3.node` reports `NODE_MODULE_VERSION 136`, which is the Electron 37 requirement (the broken installer reported `147`).
 - **Release action:** Publish `Vault Companion Setup 1.0.4.exe` as a new pre-release asset. Do not direct users to `1.0.0`–`1.0.3`.
+
+## 2026-07-21 — Companion 1.0.4 user-machine smoke test
+
+- **Human verification:** The user installed and exercised `Vault Companion Setup 1.0.4.exe`; local companion pairing and saved workflow behavior worked correctly.
+- **Release decision:** `1.0.4` is the functional Windows Companion baseline. Keep it as a pre-release because the installer is unsigned and has not yet completed broader clean-machine validation. Promote a later signed build to a full release after that validation.

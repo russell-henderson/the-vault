@@ -1,7 +1,7 @@
 # Vault Architect Documentation
 
 **Status:** Canonical documentation index
-**Release:** `v1.0.0`
+**Core release:** `v1.0.0` · **Windows Companion:** `v1.0.4` pre-release (user-machine smoke tested; unsigned)
 **Last reviewed:** 2026-07-18
 
 This directory contains durable product documentation, accepted decisions, submission material, and historical verification evidence. Current source code and executable tests remain the implementation authority.
