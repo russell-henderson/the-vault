@@ -38,6 +38,7 @@ The v1.0.0 experience includes:
 - document rerolls, local editing, Markdown/ZIP exports, and execution evidence;
 - canonical tags, rename/delete/bulk-delete operations, and browser-local IndexedDB cover art;
 - a premium dashboard centered on the authored `THE VAULT ARCHITECT` identity.
+- a hosted Ephemeral Mode for browser-only Ollama or OpenRouter generation, selected-document generation, and Markdown/ZIP export without persistence; OpenRouter supports OAuth plus a memory-only existing-key fallback.
 
 ## Why it matters
 
@@ -58,7 +59,7 @@ Human decisions control product direction, architecture boundaries, approval sem
 
 ## Demonstration path
 
-Use the analytics dashboard panel brief to demonstrate discovery, generator confirmation, packet review, approval, prompt compilation, model selection, live document streaming, verification, and export. Then return to the vault to show tag management, cover personalization, and deletion synchronization.
+For the hosted path, demonstrate Ephemeral Mode first: provider connection, architecture generation, selected documents, and ZIP export without saving. Use the analytics dashboard panel brief with Saved API / Companion mode to demonstrate discovery, generator confirmation, packet review, approval, prompt compilation, live document streaming, verification, and persistent vault operations.
 
 The three-minute walkthrough is maintained in [demo-script.md](demo-script.md). The current implementation and boundaries are maintained in [architecture.md](architecture.md) and [development-plan.md](development-plan.md).
 

@@ -387,3 +387,9 @@ For each meaningful milestone, record the date, model used, repository state, ma
 - **Verification:** `npm run typecheck`, `npm test` (20 files, 96 tests), `npm run build`, and `git diff --check` pass. No commit, push, Railway deployment, or Vercel deployment was performed.
 - **Follow-up:** The ephemeral workspace now carries a generated architecture into selected document generation and ZIP export, still entirely in browser memory rather than the saved Blueprint workspace.
 - **Provider fallback:** Added an explicit existing-OpenRouter-key option for browser environments where the OAuth callback cannot complete. The key is held in React memory only and is not persisted.
+
+## 2026-07-21 — Production documentation synchronization
+
+- **Decision:** Document the hosted application as two intentional workflows: default browser-only Ephemeral Mode and opt-in Saved API / Companion mode.
+- **Documentation:** Added the architecture-to-documents-to-ZIP user flow, existing OpenRouter key and manual model-ID fallback, hosted demo path, persistence boundaries, and developer rationale across the README, architecture record, ADR, development plan, demo script, and submission notes.
+- **Release state:** The verified companion and ephemeral workspace commits, plus the Vercel Speed Insights workspace dependency repair, were pushed to `origin/main` for the hosted deployment. No user credentials are committed or stored by the app.

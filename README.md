@@ -97,7 +97,7 @@ The dashboard reports provider health and requires an explicit model choice for 
 
 ## Connecting Your Local API or Companion
 
-The hosted workspace at `https://the-vault-dusky.vercel.app` is a static client. It does not host your SQLite data, local API, or Ollama service. Open the site and choose a connection before creating blueprints.
+The hosted workspace at `https://the-vault-dusky.vercel.app` is a static client. It does not host your SQLite data, local API, or Ollama service. Unpaired visitors start in Ephemeral Mode; choose **Saved API / Companion mode** when you want durable blueprints, history, or disk synchronization.
 
 ### Local Companion (Recommended)
 
@@ -119,6 +119,11 @@ Chromium browsers may show a **Local Network Access** permission prompt when the
 
 Visitors who have not paired an API start in **Ephemeral Mode**. This browser-only workspace generates an architecture, can turn that architecture into selected implementation documents, and lets you download the document workspace as a ZIP. It never creates a Vault record, SQLite database, history entry, disk-sync request, or saved credential. Refreshing or closing the tab clears the generated work and provider session.
 
+1. Choose **Local Ollama** or **OpenRouter**, then select a model.
+2. Describe the system and select **Generate architecture**.
+3. Select the implementation documents you need, then choose **Generate selected documents**. Each document uses the generated architecture as context.
+4. Download `ARCHITECTURE.md` directly or choose **Download workspace ZIP** before leaving the page.
+
 Choose **Local Ollama** to use a model already running at `http://127.0.0.1:11434`; no model token is needed. A hosted secure page may need permission to reach loopback. If Chromium reports a blocked connection, restart Ollama with the production origin allowed:
 
 ```bash
@@ -134,9 +139,11 @@ ollama serve
 
 Allow the Chromium **Local Network Access** prompt. `OLLAMA_ORIGINS="*"` is suitable only for temporary local troubleshooting, not normal use.
 
-Choose **OpenRouter** to authorize through its OAuth page. The PKCE verifier lives in `sessionStorage` only while the browser redirects; the returned session key remains only in page memory and is lost on refresh. If OAuth is unavailable in a browser, users may instead paste an existing OpenRouter API key; it is used only in memory for that tab and is never written to browser storage. Select **Saved API / Companion mode** whenever you need blueprints, history, or local disk synchronization.
+Choose **OpenRouter** to authorize through its OAuth page. The PKCE verifier lives in `sessionStorage` only while the browser redirects; the returned session key remains only in page memory and is lost on refresh. If OAuth is unavailable in a browser, users may instead paste an existing OpenRouter API key; it is used only in memory for that tab and is never written to browser storage. If model discovery cannot load, enter a model ID such as `openrouter/auto` in the **OpenRouter model ID** field. Select **Saved API / Companion mode** whenever you need blueprints, history, or local disk synchronization.
 
-## Product walkthrough
+## Saved workflow walkthrough
+
+Use this workflow after connecting a Companion or Vault-compatible custom API. It creates durable blueprint records and is distinct from Ephemeral Mode.
 
 1. Select **Start with a brief** and describe the intended outcome and constraints.
 2. Run discovery. High-confidence registered results synthesize a proposal automatically; otherwise compare options, confirm the intended generator, and review the proposal.

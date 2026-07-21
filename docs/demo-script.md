@@ -1,7 +1,7 @@
 # The Vault Architect — Product Story and Demo Script
 
 **Status:** Canonical product story and local demonstration
-**Last reviewed:** 2026-07-19
+**Last reviewed:** 2026-07-21
 
 This document consolidates the former demo story and demo script. The architecture is defined in [architecture.md](architecture.md). Delivery scope is defined in [development-plan.md](development-plan.md).
 
@@ -39,6 +39,10 @@ ollama pull dolphin3:8b
 Use AI_PROVIDER=ollama for the configured Ollama path. If Ollama is unavailable, select and name the deterministic mock explicitly.
 
 ## 3. Three-minute walkthrough
+
+### Hosted ephemeral path
+
+For the production site, open `https://the-vault-dusky.vercel.app`. Without a saved connection it opens Ephemeral Mode. Choose Local Ollama or OpenRouter, generate an architecture, select supporting documents, and download the ZIP. Explain that this path has no Vault API, SQLite record, history, or disk synchronization; all results disappear on refresh. For OpenRouter, OAuth is preferred, while an existing key and a model ID such as `openrouter/auto` are tab-only fallbacks. Select **Saved API / Companion mode** to demonstrate the durable workflow below.
 
 ### 0:00–0:25 — Establish the problem
 
