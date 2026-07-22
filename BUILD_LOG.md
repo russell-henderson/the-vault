@@ -427,3 +427,9 @@ For each meaningful milestone, record the date, model used, repository state, ma
 - **Human verification:** The user installed and exercised `Vault Companion Setup 1.0.4.exe`; local companion pairing and saved workflow behavior worked correctly.
 - **Release decision:** `1.0.4` is the functional Windows Companion baseline. Keep it as a pre-release because the installer is unsigned and has not yet completed broader clean-machine validation. Promote a later signed build to a full release after that validation.
 - **Documentation synchronization:** README, architecture, ADR, development plan, demo, submission notes, and documentation index identify `v1.0.4` as the supported pre-release and mark `v1.0.0`–`v1.0.3` installers as superseded.
+
+## 2026-07-22 — Workspace batch ZIP export repair
+
+- **Diagnosis:** The custom client-side ZIP encoder omitted the central-directory external-file-attributes field and wrote one extra two-byte field before the CRC. Those layout errors shifted subsequent values and produced archives whose Markdown entries could not be enumerated or extracted by standard ZIP readers.
+- **Implementation:** Added the missing four-byte field while retaining the existing client-only export flow and completed-document filtering for both saved and ephemeral workspaces.
+- **Verification:** The focused regression test now opens the generated archive with JSZip and verifies that each Markdown filename and body can be extracted. `npm run typecheck`, `npm test` (20 files, 96 tests), and `npm run build` pass after restoring the lockfile-pinned `@vercel/analytics@2.0.1` package to the local workspace installation.
